@@ -1,0 +1,3 @@
+Before using the app, make sure you have install these package (toolbox):
+[1] Image Acquisition toolbox with GenICam
+[2] 

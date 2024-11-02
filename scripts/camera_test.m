@@ -2,30 +2,30 @@
 
 %% Create connection to the device using the specified adaptor with the specified format.
 Format = "Mono12";
-vid = videoinput("gentl", "1", Format);     % mono8, mono12
-
+vid = videoinput("gentl", 1, Format);     % mono8, mono12
 %% Configure properties that are specific to this device.
 src = getselectedsource(vid);
 
-% set screen parameters
+% Image Format Control
 src.BinningVertical = 2;            % determine resolution and light
 src.BinningHorizontal = 2;          % determine resolution and light
 fprintf("Width: %d,  Height: %d\n", vid.VideoResolution)
 vid.ROIPosition = [50,50,800,450];  % limited by resolution, [X,Y,W,H]
+src.Gamma = 1.4;                    % image adjust
 
-% set exposure parameters
+% Acquisition Control
 src.ExposureMode = "Timed";         % time control
 src.ExposureAuto = "Off";           % fixed by exposure time
 src.ExposureTime = 1e4;             % exposure time, us
+src.TriggerSource = "Line1";
 MFPS = 0.65*1e6/(src.ExposureTime+src.SensorReadoutTime);    % 0.65 as experimental coefficient
 fprintf("Readout Time: %d us\n", src.SensorReadoutTime);% readout time, determine by Binning, Decimation and ROI
 fprintf("Max Stable Frame Rate: %.1f FPS\n", MFPS);
 FrameRate = 30;                     % Hz, captured frame rate, user control, limited by 
                                     % exposure time, readout time and 
-
-% output line parameters
-src.LineInverter = "True";          % low voltage level as default
+% Digital I/O Control
 src.LineSelector = "Line2";         % output
+src.LineInverter = "True";          % low voltage level as default
 src.LineSource = "ExposureActive";  % exposure trigger the 'inner switch'
 
 % set trigger parameters
