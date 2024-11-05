@@ -17,25 +17,25 @@ classdef EBValves < handle
     end
     
     properties(Access = private)
-        vendor          (1,1)   string              % 1-by-1 device vendor
-        device_id       (1,1)   string              % 1-by-1 device identity
-        vvobj           (:,1)               = []    % 1-by-1 DataAcquisition object
-        port_mapping    (1,1)   dictionary          % the hardware port mapping 
+        adjust_time     (1,1)   double              % 1-by-1 double for avoiding timer error accumulation, seconds
         code_file       (1,1)   string              % source code file full path
         commands        (:,2)   table               % n-by-2 table, [cmd, delay]
         cmd_pointer     (1,1)   double              % 1-by-1 double, positive integer
         cmd_sender      (1,1)   timer               % 1-by-1 timer, send command to hardware
-        adjust_time     (1,1)   double              % 1-by-1 double for avoiding timer error accumulation, seconds
+        device_id       (1,1)   string              % 1-by-1 device identity
+        port_mapping    (1,1)   dictionary          % the hardware port mapping 
+        vendor          (1,1)   string              % 1-by-1 device vendor
+        vvobj           (:,1)               = []    % 1-by-1 DataAcquisition object
     end
 
     properties (Access=public, Dependent)
-        Vendor              % set/get, 1-by-1 string
-        DevideID            % set/get, 1-by-1 string
         CodePath            % set/get, 1-by-1 string
+        DeviceID            % set/get, 1-by-1 string
         IsCommandReady      % ___/get, 1-by-1 logical
         IsConnected         % ___/get, 1-by-1 logical
         IsRunning           % ___/get, 1-by-1 logical
         PortMapping         % set/get, 1-by-1 dictionary
+        Vendor              % set/get, 1-by-1 string
     end
     
     methods
@@ -59,21 +59,7 @@ classdef EBValves < handle
 
             % init timer
             this.cmd_sender = timer("BusyMode","error", "ExecutionMode","singleShot", ...
-                "Name","EBValves", "Period",1, "TimerFcn", @this.send_one_command);
-        end
-
-        %% Vendor Getter & Setter
-        function value = get.Vendor(this)
-            value = this.vendor;
-        end
-
-        function set.Vendor(this, value)
-            arguments
-                this
-                value   (1,1)   string  {mustBeMember(value, ["ni"])}
-            end
-
-            this.vendor = value;
+                "Name","EBValves_Agent", "Period",1, "TimerFcn", @this.send_one_command);
         end
 
         %% CodePath Getter & Setter
@@ -92,18 +78,42 @@ classdef EBValves < handle
                 value   (1,1)  string   {mustBeFile}
             end
 
-            [~, ~, ext] = fileparts(value);
+            if ~this.IsRunning
+                [~, ~, ext] = fileparts(value);
 
-            if ~isequal(ext, ".vcs")
-                throw(MException("EBValve:invalidCodeFile", "Unsupported " + ...
-                    "VCSL code file."));
+                if ~isequal(ext, ".vcs")
+                    throw(MException("EBValve:invalidCodeFile", "Unsupported " + ...
+                        "VCSL code file."));
+                else
+                    this.code_file = value;
+                end
+
+                % auto interpret codes
+                if this.AutoInterpret
+                    interpret(this);
+                end
             else
-                this.code_file = value;
+                throw(MException("EBValves:invalidAccess", "Running valves " + ...
+                    "code file is unsetable."));
+            end
+        end
+
+        %% DeviceID Getter & Setter
+        function value = get.DeviceID(this)
+            value = this.device_id;
+        end
+
+        function set.DeviceID(this, value)
+            arguments
+                this 
+                value   (1,1)   string 
             end
 
-            % auto interpret codes
-            if this.AutoInterpret
-                interpret(this);
+            if ~this.IsConnected
+                this.device_id = value;
+            else
+                throw(MException("EBValves:invalidAccess", "Connected valves " + ...
+                    "device ID is unsetable."));
             end
         end
 
@@ -139,18 +149,55 @@ classdef EBValves < handle
                 value   (1,1)   {EBValves.mustBePortMapping}
             end
 
-            this.port_mapping = value;
+            if ~this.IsRunning
+                this.port_mapping = value;
+
+                % auto interpret codes
+                if this.AutoInterpret
+                    interpret(this);
+                end
+            else
+                throw(MException("EBValves:invalidAccess", "Running valves " + ...
+                    "port mapping is unsetable."));
+            end
+        end
+
+        %% Vendor Getter & Setter
+        function value = get.Vendor(this)
+            value = this.vendor;
+        end
+
+        function set.Vendor(this, value)
+            arguments
+                this
+                value   (1,1)   string  {mustBeMember(value, ["ni"])}
+            end
+
+            if ~this.IsConnected
+                this.vendor = value;
+            else
+                throw(MException("EBValves:invalidAccess", "Connected valves " + ...
+                    "vendor is unsetable."));
+            end
         end
 
     end
 
     methods(Access = public)
         function Connect(this)
-            try
-                this.vvobj = daq(this.Vendor);
-            catch ME
-                throw(ME);
+            if ~this.IsConnected
+                try
+                    % set 
+                    this.vvobj = daq(this.Vendor);
+
+                catch ME
+                    throw(ME);
+                end
+            else
+                warning("EBValves:connectedInstance", "An EBValves instance is already " + ...
+                    "connected. You can create other EBValves for multi-switching.");
             end
+            
         end
 
         function Disconnect(this)

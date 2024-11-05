@@ -2,34 +2,15 @@ classdef EBCamera < handle
     %CAMERA This class is camera defination for Easy Behaviour control
     %system, Which support basic camera settings and capturing images
     
-    properties(SetAccess=immutable, GetAccess=public)
-        % Adapter - Specifies the videoinput object hardware adapter
-        % Read/Write Access - Read-only
-        % Accepted Values - Member of ["winvideo", "kinect", "dalsasapera", 
-        %                   "gige", "matrox", "dcam", "gentl", "pointgrey", 
-        %                   "linuxvideo", "macvideo", "ni"]
-        % Default - "gentl"
-        Adapter
-
-        % Identity - Specifies the device identity (device index)
-        % Read/Write Access - Read-only
-        % Accepted Values - Positive integer
-        % Default - 1
-        Identity
-
-        % Format - Specifies the device pixel format
-        % Read/Write Access - Read-only
-        % Accepted Values - 1-by-1 string
-        % Default - "Mono12"
-        Format
-    end
-
     properties(Access=private)
+        abs_start_t (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
+        adapter     (1,1)   string                              % 1-by-1 string, the hardware adapter
+        cap_agent   (1,1)   timer                               % 1-by-1 timer object
+        devide_id   (1,1)   double                              % 1-by-1 double, positive integer
+        fr_target   (1,1)   double      {mustBePositive} = 25   % 1-by-1 target frame rate, Hz
+        iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
         viobj       (:,1)                                = []   % 1-by-1 videoinput object
         vsobj       (:,1)                                = []   % 1-by-1 videosource object
-        fr_target   (1,1)   double      {mustBePositive} = 25   % 1-by-1 target frame rate, Hz
-        cap_agent   (1,1)   timer                               % 1-by-1 timer object
-        abs_start_t (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
     end
 
     properties (Access=public)
@@ -42,11 +23,14 @@ classdef EBCamera < handle
 
     properties (Access=public, Dependent)
         AcquireFrameRate        % set/get, 1-by-1 double positive, in [1, 100], 25 as default
+        Adapter                 % set/get, 1-by-1 double positive, in [1, 100], 25 as default
         BinningHorizontal       % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BinningVertical         % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BitDepth                % ___/get, 1-by-1 double positive integer in [8,12]
+        DeviceID                % set/get, 1-by-1 double positive integer
         DeviceModelName         % ___/get, 1-by-1 string
         ExposureTime            % set/get, 1-ny-1 double positive integer in [100, 1000000], unit as us
+        ImageFormat             % set/get, 1-by-1 string, usual as "Mono8", "Mono12", etc
         Gamma                   % set/get, 1-by-1 double positive in (0, 4)
         IsConnected             % ___/get, 1-by-1 logical, false as default
         IsLiving                % ___/get, 1-by-1 logical, indicate camera living status
@@ -54,7 +38,7 @@ classdef EBCamera < handle
         LineInverter            % set/get, 1-by-1 logical, true as default
         LineMode                % ___/get, 1-by-1 string, in ["input", "output"]
         LineSelector            % set/get, 1-by-1 string, in ["Line1", ..., "Line4"], "Line2" as default
-        LineSource              % set/get, 1-by-1 string, in ["Exposure Active", "Frame Trigger Wait", "Frame Burst Trigger Wait"]
+        LineSource              % set/get, 1-by-1 string, in ["ExposureActive", "FrameTriggerWait", "FrameBurstTriggerWait"]
         MaxAcquireFrameRate     % ___/get, 1-by-1 double positive
         MaxFrameRate            % ___/get, 1-by-1 double positive
         OffsetX                 % set/get, 1-by-1 double nonnegtive integer
@@ -70,17 +54,15 @@ classdef EBCamera < handle
             %EBCAMERA A constructor
             arguments
                 adapter_     (1,1)   string  {mustBeMember(adapter_, ["winvideo", ...
-                                            "kinect", "dalsasapera", "gige", ...
-                                            "matrox", "dcam", "gentl", "pointgrey", ...
-                                            "linuxvideo", "macvideo", "ni"])} = "gentl"
+                                             "gentl","ni"])} = "gentl"
                 identity_    (1,1)   double  {mustBePositive, mustBeInteger} = 1
                 format_      (1,1)   string  = "Mono12"
             end
             
-            % set immutable variables
-            this.Adapter = adapter_;
-            this.Identity = identity_;
-            this.Format = format_;
+            % set basic variables
+            this.adapter = adapter_;
+            this.devide_id = identity_;
+            this.iformat = format_;
 
             % initialize video buffer
             this.VideoBuffer = Video.empty();
@@ -164,6 +146,25 @@ classdef EBCamera < handle
             end
         end
 
+        %% Adapter Getter & Setter
+        function value = get.Adapter(this)
+            value = this.adapter;
+        end
+
+        function set.Adapter(this, value)
+            arguments
+                this 
+                value (1,1) string  {mustBeMember(value, ["winvideo","gentl","ni"])}
+            end
+
+            if ~this.IsConnected
+                this.adapter = value;
+            else
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "adapter is unsetable."));
+            end
+        end
+
         %% BinningHorizontal Getter & Setter
         function value = get.BinningHorizontal(this)
             if this.IsConnected
@@ -190,7 +191,7 @@ classdef EBCamera < handle
 
                     if this.ROIAutoScale == true
                         this.OffsetX = round(this.OffsetX * pre_value/value);
-                        this.ROIWidth = round(this.ROIWidth * pre_value/value - 1);
+                        this.ROIWidth = round(this.ROIWidth * pre_value/value);
                     else
                         rpos = this.VideoResolution;
                         if this.OffsetX + this.ROIWidth > rpos(3)
@@ -252,7 +253,7 @@ classdef EBCamera < handle
         function value = get.BitDepth(this)
             switch this.Adapter
                 case "gentl"
-                    switch this.Format
+                    switch this.ImageFormat
                         case "Mono8"
                             value = 8;
                         case "Mono12"
@@ -269,7 +270,26 @@ classdef EBCamera < handle
             end
         end
 
-        %% DeviceName Getter
+        %% DeviceID Getter & Setter
+        function value = get.DeviceID(this)
+            value = this.devide_id;
+        end
+
+        function set.DeviceID(this, value)
+            arguments
+                this 
+                value (1,1) double  {mustBePositive, mustBeInteger}
+            end
+
+            if ~this.IsConnected
+                this.devide_id = value;
+            else
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "device identity is unsetable."));
+            end
+        end
+
+        %% DeviceModelName Getter
         function value = get.DeviceModelName(this)
             if this.IsConnected
                 value = this.vsobj.DeviceModelName;
@@ -300,6 +320,25 @@ classdef EBCamera < handle
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not set parameters."));
+            end
+        end
+
+        %% Format Getter && Setter
+        function value = get.ImageFormat(this)
+            value = this.iformat;
+        end
+
+        function set.ImageFormat(this, value)
+            arguments
+                this 
+                value (1,1) string
+            end
+
+            if ~this.IsConnected
+                this.iformat = value;
+            else
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "format is unsetable."));
             end
         end
 
@@ -606,8 +645,8 @@ classdef EBCamera < handle
                 try
                     % new object
                     this.viobj = videoinput(this.Adapter, ...
-                                            this.Identity, ...
-                                            this.Format);
+                                            this.DeviceID, ...
+                                            this.ImageFormat);
                     this.vsobj = getselectedsource(this.viobj);
 
                     % set trigger parameters
@@ -619,7 +658,7 @@ classdef EBCamera < handle
                 end
             else
                 warning("EBCamera:connectedInstance", "An EBCamera instance is already " + ...
-                        "connected. You can create other EBCameras for multi-recording.");
+                        "connected. You can create other EBCamera for multi-recording.");
             end
         end
 
