@@ -1,0 +1,6 @@
+This Folder contains the basic data structure class
+- mStack
+- mQueue
+- mTree
+For simplifying the data operation on matlab
+% Copyright (c) 2022, Weihan Li
