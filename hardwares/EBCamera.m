@@ -190,12 +190,13 @@ classdef EBCamera < handle
 
                     if this.ROIAutoScale == true
                         this.OffsetX = round(this.OffsetX * pre_value/value);
-                        this.ROIWidth = round(this.ROIWidth * pre_value/value);
+                        this.ROIWidth = round(this.ROIWidth * pre_value/value - 1);
                     else
-                        if this.OffsetX + this.ROIWidth > this.VideoResolution(1)
+                        rpos = this.VideoResolution;
+                        if this.OffsetX + this.ROIWidth > rpos(3)
                             % reset ROI area on X
                             this.OffsetX = 0;
-                            this.ROIWidth = this.VideoResolution(1);
+                            this.ROIWidth = rpos(3);
                         end
                     end
                 end
@@ -233,10 +234,11 @@ classdef EBCamera < handle
                         this.OffsetY = round(this.OffsetY * pre_value/value);
                         this.ROIHeight = round(this.ROIHeight * pre_value/value);
                     else
-                        if this.OffsetY + this.ROIHeight > this.VideoResolution(2)
+                        rpos = this.VideoResolution;
+                        if this.OffsetY + this.ROIHeight > rpos(4)
                             % reset ROI area on Y
                             this.OffsetY = 0;
-                            this.ROIHeight = this.VideoResolution(2);
+                            this.ROIHeight = rpos(4);
                         end
                     end
                 end
@@ -427,9 +429,9 @@ classdef EBCamera < handle
         function set.LineSource(this, value)
             arguments
                 this
-                value   (1,1)   string  {mustBeMember(value, ["Exposure Active", ...
-                                                              "Frame Trigger Wait", ...
-                                                              "Frame Burst Trigger Wait"])}
+                value   (1,1)   string  {mustBeMember(value, ["ExposureActive", ...
+                                                              "FrameTriggerWait", ...
+                                                              "FrameBurstTriggerWait"])}
             end
 
             if this.IsConnected
@@ -463,7 +465,8 @@ classdef EBCamera < handle
         %% OffsetX Getter & Setter
         function value = get.OffsetX(this)
             if this.IsConnected
-                value = this.viobj.ROIPosition(1);
+                rpos = this.viobj.ROIPosition;
+                value = rpos(1);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -473,11 +476,12 @@ classdef EBCamera < handle
         function set.OffsetX(this, value)
             arguments
                 this
-                value   (1,1)   double  {mustBePositive, mustBeInteger}
+                value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
                 try
-                    this.viobj.ROIPosition(1) = value;
+                    rpos = this.viobj.ROIPosition; rpos(1) = value;
+                    this.viobj.ROIPosition= rpos;
                 catch ME
                     throw(ME);
                 end
@@ -490,7 +494,8 @@ classdef EBCamera < handle
         %% OffsetY Getter & Setter
         function value = get.OffsetY(this)
             if this.IsConnected
-                value = this.viobj.ROIPosition(2);
+                rpos = this.viobj.ROIPosition;
+                value = rpos(2);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -500,11 +505,12 @@ classdef EBCamera < handle
         function set.OffsetY(this, value)
             arguments
                 this
-                value   (1,1)   double  {mustBePositive, mustBeInteger}
+                value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
                 try
-                    this.viobj.ROIPosition(2) = value;
+                    rpos = this.viobj.ROIPosition; rpos(2) = value;
+                    this.viobj.ROIPosition = rpos;
                 catch ME
                     throw(ME);
                 end
@@ -527,7 +533,8 @@ classdef EBCamera < handle
         %% ROIWidth Getter & Setter
         function value = get.ROIWidth(this)
             if this.IsConnected
-                value = this.viobj.ROIPosition(3);
+                rpos = this.viobj.ROIPosition;
+                value = rpos(3);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -541,7 +548,8 @@ classdef EBCamera < handle
             end
             if this.IsConnected
                 try
-                    this.viobj.ROIPosition(3) = value;
+                    rpos = this.viobj.ROIPosition; rpos(3) = value;
+                    this.viobj.ROIPosition = rpos;
                 catch ME
                     throw(ME);
                 end
@@ -554,7 +562,8 @@ classdef EBCamera < handle
         %% ROIHeight Getter & Setter
         function value = get.ROIHeight(this)
             if this.IsConnected
-                value = this.viobj.ROIPosition(4);
+                rpos = this.viobj.ROIPosition;
+                value = rpos(4);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -568,7 +577,8 @@ classdef EBCamera < handle
             end
             if this.IsConnected
                 try
-                    this.viobj.ROIPosition(4) = value;
+                    rpos = this.viobj.ROIPosition; rpos(4) = value;
+                    this.viobj.ROIPosition = rpos;
                 catch ME
                     throw(ME);
                 end

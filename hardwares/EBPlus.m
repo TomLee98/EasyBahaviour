@@ -2,21 +2,24 @@ classdef (Abstract) EBPlus
     %EBPLUS 此处显示有关此类的摘要
     %   此处显示详细说明
     
-    properties
-        Property1
+    properties (Abstract, Access=public, Dependent)
+        IsConnected
+        IsRunning
     end
     
-    methods
-        function obj = EBPlus(inputArg1,inputArg2)
+    methods(Abstract)
+        function this = EBPlus(inputArg1,inputArg2)
             %EBPLUS 构造此类的实例
             %   此处显示详细说明
-            obj.Property1 = inputArg1 + inputArg2;
+            this.Property1 = inputArg1 + inputArg2;
         end
-        
-        function outputArg = method1(obj,inputArg)
-            %METHOD1 此处显示有关此方法的摘要
-            %   此处显示详细说明
-            outputArg = obj.Property1 + inputArg;
+
+        function Connect(this)
+
+        end
+
+        function Disconnect(this)
+            
         end
     end
 end
