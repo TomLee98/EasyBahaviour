@@ -54,7 +54,7 @@ classdef EBDAQ < handle
 
             % 
             this.adjust_time = 0;
-            this.code_file = string([filesep, 'expdef', filesep, 'valve.vcs']);
+            this.code_file = string(['.', filesep, 'exdef', filesep, 'valve.vcs']);
             this.commands = table('Size', [0, 2], 'VariableTypes',{'double', 'double'}, ...
                                   'VariableNames',{'cmd', 'delay'});
             this.cmd_pointer = 0;
@@ -69,7 +69,26 @@ classdef EBDAQ < handle
             % init timer
             this.cmd_sender = timer("BusyMode",     "error", ...
                                     "Name",         "EBValves_Agent", ...
-                                    "TimerFcn",     @this.send_one_command);
+                                    "TimerFcn",     @this.send_one_command, ...
+                                    "StartFcn",     @this.send_reset);
+        end
+
+        function delete(this)
+            % free data acquisition object
+             if this.IsConnected
+                % if running, stop
+                if this.IsRunning, stop(this.cmd_sender); end
+
+                % disconnect camera
+                this.Disconnect();
+             end
+
+            delete(this.cmd_sender);
+
+            EBDAQ.ManageWarnings("on");
+
+            % free memory
+            clear("this");
         end
 
         %% CameraPort Getter & Setter
@@ -80,19 +99,23 @@ classdef EBDAQ < handle
         function set.CameraPort(this, value)
             arguments
                 this
-                value   (1,2)   double  {mustBeNonnegative, mustBeInteger}
+                value   (1,2)   double
             end
 
-            if this.IsConnected
-                if (value(1) < this.port_n) ...
-                        && (value(2) < this.NLINE_EACH_PORT)
-                    this.cport = value;
+            if ~this.IsConnected
+                if all(~isnan(value))
+                    if (value(1) < this.port_n) ...
+                            && (value(2) < this.NLINE_EACH_PORT)
+                        this.cport = value;
+                    else
+                        throw(MException("EBDAQ:invalidParameter", ...
+                            "<port>/<line> are out of range."));
+                    end
                 else
-                    throw(MException("EBDAQ:invalidParameter", ...
-                        "<port>/<line> are out of range."));
+                    % keep [nan, nan]
                 end
             else
-                throw(MException("EBDAQ:invalidAccess", "Disconnected daq-device " + ...
+                throw(MException("EBDAQ:invalidAccess", "Connected daq-device " + ...
                     "camera port is unsetable."))
             end
         end
@@ -103,6 +126,7 @@ classdef EBDAQ < handle
                     && isfile(this.code_file)
                 value = this.code_file;
             else
+                value = "";
                 warning("EBValve:noCodeAssigned", "Code file has not been assigned.");
             end
         end
@@ -113,18 +137,20 @@ classdef EBDAQ < handle
                 value   (1,1)  string   {mustBeFile}
             end
 
-            if ~this.IsRunning
-                [~, ~, ext] = fileparts(value);
-
-                if ~isequal(ext, ".vcs")
-                    throw(MException("EBValve:invalidCodeFile", "Unsupported " + ...
-                        "VCSL code file."));
-                else
-                    this.code_file = value;
+            if this.IsConnected
+                if this.IsRunning
+                    throw(MException("EBDAQ:invalidAccess", "Running daq-device " + ...
+                        "code file is unsetable."));
                 end
+            end
+
+            [~, ~, ext] = fileparts(value);
+
+            if ~isequal(ext, ".vcs")
+                throw(MException("EBValve:invalidCodeFile", "Unsupported " + ...
+                    "VCSL code file."));
             else
-                throw(MException("EBDAQ:invalidAccess", "Running daq-device " + ...
-                    "code file is unsetable."));
+                this.code_file = value;
             end
         end
 
@@ -203,7 +229,7 @@ classdef EBDAQ < handle
                 value   (:,2)   double  {mustBeNonnegative, mustBeInteger}
             end
 
-            if this.IsConnected
+            if ~this.IsConnected
                 if all(value(1) < this.port_n) ...
                         && all(value(2) < this.NLINE_EACH_PORT)
                     this.vport = value;
@@ -212,7 +238,7 @@ classdef EBDAQ < handle
                         "<port>/<line> are out of range."));
                 end
             else
-                throw(MException("EBDAQ:invalidAccess", "Disconnected daq-device " + ...
+                throw(MException("EBDAQ:invalidAccess", "Connected daq-device " + ...
                     "valves port is unsetable."))
             end
         end
@@ -303,13 +329,13 @@ classdef EBDAQ < handle
 
         function Test(this)
             % generate temporary test command
-            this.commands.cmd = this.vport_mapping.values;
-            this.commands.delay = 2*ones(numel(this.commands.cmd), 1);
-
+            this.commands = cell2table([this.vport_mapping.values, ...
+                                        repmat({2}, size(this.vport,1)+1, 1)], ...
+                                        "VariableNames",{'cmd','delay'});
             % configure sender
             this.cmd_sender.ExecutionMode = "fixedRate";
             this.cmd_sender.Period = 2;
-            this.cmd_sender.TasksToExecute = numel(this.commands.cmd);
+            this.cmd_sender.TasksToExecute = size(this.commands, 1);
 
             % trigger sender
             start(this.cmd_sender);
@@ -361,7 +387,14 @@ classdef EBDAQ < handle
 
             this.cmd_pointer = this.cmd_pointer + 1;
             % send one command
-            write(this.daqobj, this.commands.cmd(this.cmd_pointer));
+            write(this.daqobj, this.commands.cmd(this.cmd_pointer, :));
+        end
+
+        function send_reset(this, src, evt)
+            src; %#ok<VUNUS>
+            evt; %#ok<VUNUS>
+
+            this.cmd_pointer = 0;
         end
     end
 
@@ -371,8 +404,8 @@ classdef EBDAQ < handle
                 state    (1,1)   string  {mustBeMember(state, ["on","off"])} = "off"
             end
 
+           warning(state, 'daq:Session:onDemandOnlyChannelsAdded');
+
         end
-
-
     end
 end
