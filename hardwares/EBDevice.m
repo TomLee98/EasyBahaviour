@@ -1,4 +1,4 @@
-classdef (Abstract) EBPlus
+classdef (Abstract) EBDevice
     %EBPLUS 此处显示有关此类的摘要
     %   此处显示详细说明
     
@@ -8,7 +8,7 @@ classdef (Abstract) EBPlus
     end
     
     methods(Abstract)
-        function this = EBPlus(inputArg1,inputArg2)
+        function this = EBDevice(inputArg1,inputArg2)
             %EBPLUS 构造此类的实例
             %   此处显示详细说明
             this.Property1 = inputArg1 + inputArg2;

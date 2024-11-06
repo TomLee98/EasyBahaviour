@@ -671,8 +671,6 @@ classdef EBCamera < handle
 
                 % clear buffer (in memory)
                 this.VideoBuffer.Clear();
-            else
-                warning("EBCamera:invalidAccess", "No connected EBCamera device.");
             end
         end
 
