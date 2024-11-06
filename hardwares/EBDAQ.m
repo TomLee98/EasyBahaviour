@@ -16,6 +16,8 @@ classdef EBDAQ < handle
     
     properties(Access = private)
         adjust_time     (1,1)   double              % avoiding timer error accumulation, seconds
+        cam_checker     (1,1)   timer               % agent for check camera port signal
+        cam_vl_init     (1,1)   logical             % the initial camera votage level
         code_file       (1,1)   string              % source code file full path
         commands        (:,2)   table               % table for valve commands, [cmd, delay]
         cmd_pointer     (1,1)   double              % positive integer indicates command index
@@ -23,7 +25,9 @@ classdef EBDAQ < handle
         cport           (1,2)   double              % [port, line], indicate camera switch channel
         daqobj          (:,1)                       % DataAcquisition object, just control hardware
         device_id       (1,1)   string              % device identity
+        duration        (:,1)   double              % time queue duration, timer check it every 10 ms
         port_n          (1,1)   double              % DAQ device port number
+        start_t         (1,1)   uint64              % valves running start time, get by tic
         vport           (:,2)   double              % [port, line], indicate valves channel
         vport_mapping   (1,1)   dictionary          % the valves port mapping, <string> -> <cell>, indicate a transformation
         vendor          (1,1)   string              % device vendor
@@ -33,6 +37,7 @@ classdef EBDAQ < handle
         CameraPort          % set/get, 1-by-2 double, nonnegtive integer
         CodeFile            % set/get, 1-by-1 string
         DeviceID            % set/get, 1-by-1 string
+        Duration            % ___/get, n-by-1 double
         IsCommandReady      % ___/get, 1-by-1 logical
         IsConnected         % ___/get, 1-by-1 logical
         IsRunning           % ___/get, 1-by-1 logical
@@ -54,6 +59,7 @@ classdef EBDAQ < handle
 
             % 
             this.adjust_time = 0;
+            this.cam_vl_init = false;
             this.code_file = string(['.', filesep, 'exdef', filesep, 'valve.vcs']);
             this.commands = table('Size', [0, 2], 'VariableTypes',{'double', 'double'}, ...
                                   'VariableNames',{'cmd', 'delay'});
@@ -61,25 +67,45 @@ classdef EBDAQ < handle
             this.cport = [nan, nan];
             this.daqobj = [];
             this.device_id = "";
+            this.duration = [];
             this.port_n = nan;
+            this.start_t = 0;
             this.vport = [nan, nan];
             this.vport_mapping = dictionary([], []);
             this.vendor = "";
 
-            % init timer
-            this.cmd_sender = timer("BusyMode",     "error", ...
-                                    "Name",         "EBValves_Agent", ...
-                                    "TimerFcn",     @this.send_one_command, ...
-                                    "StartFcn",     @this.send_reset);
+            % init command sending timer
+            this.cmd_sender = timer("BusyMode",         "error", ...
+                                    "ExecutionMode",    "fixedRate", ...
+                                    "Name",             "EBValves_Agent", ...
+                                    "Period",           0.01, ...           % sending error
+                                    "TasksToExecute",   inf, ...
+                                    "TimerFcn",         @this.send_one_command, ...
+                                    "StartFcn",         @this.send_reset);
+
+            % init camera port checking timer
+            this.cam_checker = timer("BusyMode",        "drop", ...
+                                     "ExecutionMode",   "fixedDelay", ...
+                                     "Name",            "EBCamera_Listener", ...
+                                     "Period",          0.002, ...          % detection error
+                                     "TasksToExecute",  inf, ...
+                                     "TimerFcn",        @this.listen_for_trigger);
+
+            % disable raw devices warning
+            EBDAQ.ManageWarnings("off");
         end
 
         function delete(this)
+            %
+            stop(this.cam_checker);
+            delete(this.cam_checker);
+
             % free data acquisition object
              if this.IsConnected
                 % if running, stop
                 if this.IsRunning, stop(this.cmd_sender); end
 
-                % disconnect camera
+                % disconnect DAQ device
                 this.Disconnect();
              end
 
@@ -171,6 +197,11 @@ classdef EBDAQ < handle
                 throw(MException("EBDAQ:invalidAccess", "Connected daq-device " + ...
                     "device ID is unsetable."));
             end
+        end
+
+        %% Duration Getter
+        function value = get.Duration(this)
+            value = this.duration;
         end
 
         %% IsCommandReady Getter
@@ -277,6 +308,9 @@ classdef EBDAQ < handle
                     camera_channel = sprintf("port%d/line%d", this.cport);
                     addinput(this.daqobj, this.device_id, camera_channel, "Digital");
 
+                    % record initial camera port votage level
+                    [this.cam_vl_init, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
+
                     % valves channel as output:
                     for k = 1:size(this.vport, 1)
                         valve_channel = sprintf("port%d/line%d", this.vport(k,:));
@@ -342,7 +376,10 @@ classdef EBDAQ < handle
         end
 
         function Run(this)
+            % EBDAQ running before any other EBDevice
+            % EBCamera trigger the inner cmd_sender timer
 
+            start(this.cam_checker);    
         end
 
         function value = GetCurrentValves(this)
@@ -374,6 +411,7 @@ classdef EBDAQ < handle
             try
                 this.commands = this.Interpreter(this.code_file, ...
                                                  this.vport_mapping);
+                this.duration = [0; cumsum(max(this.commands.delay, 0.05))];
             catch ME
                 throwAsCaller(ME);
             end
@@ -385,9 +423,14 @@ classdef EBDAQ < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            this.cmd_pointer = this.cmd_pointer + 1;
-            % send one command
-            write(this.daqobj, this.commands.cmd(this.cmd_pointer, :));
+            rt = toc(this.start_t);
+
+            if rt >= this.duration(this.cmd_pointer + 1)
+                % send one command
+                write(this.daqobj, this.commands.cmd(this.cmd_pointer, :));
+
+                this.cmd_pointer = this.cmd_pointer + 1;
+            end
         end
 
         function send_reset(this, src, evt)
@@ -395,6 +438,20 @@ classdef EBDAQ < handle
             evt; %#ok<VUNUS>
 
             this.cmd_pointer = 0;
+            this.start_t = tic;     % record start time
+        end
+
+        function listen_for_trigger(this, src, evt)
+            src; %#ok<VUNUS>
+            evt; %#ok<VUNUS>
+
+            [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
+            if cam_vl ~= this.cam_vl_init       % detected voltage changing
+                stop(src);      % stop this timer immediately
+
+                % trigger valves running
+                start(this.cmd_sender);
+            end
         end
     end
 
@@ -405,7 +462,6 @@ classdef EBDAQ < handle
             end
 
            warning(state, 'daq:Session:onDemandOnlyChannelsAdded');
-
         end
     end
 end

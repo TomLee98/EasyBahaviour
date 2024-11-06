@@ -29,7 +29,7 @@ classdef EBCamera < handle
         BitDepth                % ___/get, 1-by-1 double positive integer in [8,12]
         DeviceID                % set/get, 1-by-1 double positive integer
         DeviceModelName         % ___/get, 1-by-1 string
-        ExposureTime            % set/get, 1-ny-1 double positive integer in [100, 1000000], unit as us
+        ExposureTime            % set/get, 1-ny-1 double positive integer in [5000, 1000000], unit as us
         ImageFormat             % set/get, 1-by-1 string, usual as "Mono8", "Mono12", etc
         Gamma                   % set/get, 1-by-1 double positive in (0, 4)
         IsConnected             % ___/get, 1-by-1 logical, false as default
@@ -312,7 +312,7 @@ classdef EBCamera < handle
         function set.ExposureTime(this, value)
             arguments
                 this
-                value   (1,1)   double  {mustBeInteger, mustBeInRange(value, 100, 1000000)}
+                value   (1,1)   double  {mustBeInteger, mustBeInRange(value, 5000, 1000000)}
             end
 
             if this.IsConnected

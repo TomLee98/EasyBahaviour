@@ -79,7 +79,7 @@ for n = 1:numel(cmdq)
     cmd = cmdq(n);
     switch cmd
         case KWD_CLOSE_
-            ctbl = [ctbl; {map{KWD_CLOSE_}, 0}];    %#ok<AGROW> % delay as 0
+            ctbl = [ctbl; {map{KWD_CLOSE_}, 1}];    %#ok<AGROW> % delay as 1 (constant)
         otherwise
             % parse final command
             cmd = cmd.split(":");
