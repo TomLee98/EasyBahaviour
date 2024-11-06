@@ -32,6 +32,15 @@ classdef EBKernel
             % turn on camera
             duration = this.devices{"daq_device"}.Duration;
             this.devices{"camera"}.Acquire(duration(end) + delay_fi);
+
+            % live
+            hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
+                                 this.devices{"camera"}.ROIWidth));
+            while this.devices{"camera"}.IsRunning
+                frame = this.devices{"camera"}.GetCurrentFrame();
+                hImage.CData = frame{1};
+                pause(0.1);         % approximate 10 Hz
+            end
         end
 
         function stop(this)
