@@ -104,21 +104,23 @@ classdef EBKernel < handle
                 dev     (1,1)   dictionary
             end
 
-            if isKey(this.devices, "camera") ...
-                    && this.devices{"camera"}.IsConnected ...
-                    && this.devices{"camera"}.IsRunning
-                throw(MException("EBKernel:invalidAccess", ...
-                    "EBKernel does not support hot swap."));
-            else
-                % replace devices
-                this.devices = dev;
-
-                % get possible duration
-                if isKey(this.devices, "daq_device") ...
-                        && this.devices{"daq_device"}.IsConnected
-                    timeseq = this.devices{"daq_device"}.Duration;
-                    this.duration = timeseq(end);
+            if this.devices.isConfigured
+                if isKey(this.devices, "camera") ...
+                        && this.devices{"camera"}.IsConnected ...
+                        && this.devices{"camera"}.IsRunning
+                    throw(MException("EBKernel:invalidAccess", ...
+                        "EBKernel does not support hot swap."));
                 end
+            end
+            
+            % replace devices
+            this.devices = dev;
+
+            % get possible duration
+            if isKey(this.devices, "daq_device") ...
+                    && this.devices{"daq_device"}.IsConnected
+                timeseq = this.devices{"daq_device"}.Duration;
+                this.duration = timeseq(end);
             end
         end
 
