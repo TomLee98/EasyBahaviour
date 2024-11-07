@@ -80,10 +80,11 @@ classdef EBDAQ < handle
             this.cmd_sender = timer("BusyMode",         "error", ...
                                     "ExecutionMode",    "fixedRate", ...
                                     "Name",             "EBValves_Agent", ...
-                                    "Period",           0.025, ...           % 0.02s is minimal period
+                                    "Period",           0.02, ...           % 0.02s is minimal period
                                     "TasksToExecute",   inf, ...
                                     "TimerFcn",         @this.send_one_command, ...
-                                    "StartFcn",         @this.send_reset);
+                                    "StartFcn",         @this.send_init, ...
+                                    "StopFcn",          @this.send_reset);
 
             % init camera port checking timer
             this.cam_checker = timer("BusyMode",        "drop", ...
@@ -447,18 +448,33 @@ classdef EBDAQ < handle
 
             if rt >= this.duration(this.cmd_pointer + 1)
                 this.cmd_pointer = this.cmd_pointer + 1;
+                
+                if this.cmd_pointer > size(this.commands.cmd, 1)
+                    % stop immediately
+                    stop(this.cmd_sender);
+                    return;
+                end
 
                 % send one command
-                write(this.daqobj, this.commands.cmd(this.cmd_pointer, :));
+                cmd = this.commands.cmd(this.cmd_pointer, :);
+                write(this.daqobj, cmd);
             end
+        end
+
+        function send_init(this, src, evt)
+            src; %#ok<VUNUS>
+            evt; %#ok<VUNUS>
+
+            this.cmd_pointer = 0;
+            this.start_t = tic;     % record start time
         end
 
         function send_reset(this, src, evt)
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            this.cmd_pointer = 0;
-            this.start_t = tic;     % record start time
+            % recover command and duration
+            this.interpret();
         end
 
         function listen_for_trigger(this, src, evt)
