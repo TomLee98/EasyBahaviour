@@ -5,11 +5,16 @@ function ctbl = vcsl(file, map)
 %   - file: string scalar, indicate the source file absolute location
 %   - map: dictionary object, valve label map to inner identity (hard code)
 % Output:
-%   - ctbl: n-by-2 table, format as [cmd, delay]
+%   - ctbl: n-by-4 table, format as [code, mixing, cmd, delay]
+
+% VCSL Language Interpreter
+% Author: Weihan Li
+% Version: 1.1.0
+% Release Date: 2024/11/07
 
 arguments
-    file    (1,1)   string      {mustBeFile}
-    map     (1,1)   dictionary  = dictionary()  % string -> 1-by-n logical array
+    file    (1,1)   string      {mustBeFile}    % 
+    map     (1,1)   dictionary                  % string -> 1-by-n logical array
 end
 
 %% KEYWORD DEFINATION
@@ -26,8 +31,8 @@ catch ME
     rethrow(ME);
 end
 
-ctbl = table('Size', [0,2], 'VariableTypes', {'double', 'double'}, ...
-    'VariableNames', {'cmd', 'delay'});
+ctbl = table('Size', [0,4], 'VariableTypes', {'string', 'cell', 'double', 'double'}, ...
+    'VariableNames', {'code', 'mixing', 'cmd', 'delay'});
 lblmap = dictionary();
 cmdq = [];          % full commands queue, n-by-1 string array
 
@@ -76,14 +81,51 @@ cmdq = cmdq.erase(" ");
 
 % post-modify cmdq to ctbl
 for n = 1:numel(cmdq)
-    cmd = cmdq(n);
-    switch cmd
+    cmdl = cmdq(n);
+    switch cmdl
         case KWD_CLOSE_
-            ctbl = [ctbl; {map{KWD_CLOSE_}, 1}];    %#ok<AGROW> % delay as 1 (constant)
+            ctbl = [ctbl; {KWD_CLOSE_, {nan}, map{KWD_CLOSE_}, 1}];    %#ok<AGROW> % delay as 1 (constant)
         otherwise
             % parse final command
-            cmd = cmd.split(":");
-            lcmd = cmd(1).extractBetween("[","]").split("&");
+            cmdl = cmdl.split(":");
+            code = cmdl(1).extractBetween("[","]");
+            args = cmdl(2).split(",").erase(" ");
+
+            % parse 'delay' and validate
+            delay = str2double(args(1));
+            if isnan(delay) || isinf(delay)
+                throw(MException("vcsl:invalidDelay","Line:""%s"" with " + ...
+                    "invalid delay time detected.", cmdq(n)));
+            end
+
+            % parse mixing and validate
+            if isscalar(args)
+                mixing = 1;
+            else
+                mixing = reshape(str2double(args(2).split("&")),1,[]);
+            end
+            
+            if any(isnan(mixing)|isinf(mixing)|(mixing<=0)|(mixing>1))
+                throw(MException("vcsl:invalidMixing","Line:""%s"" with " + ...
+                    "invalid mixing ratio.", cmdq(n)));
+            end
+            
+            if sum(mixing) ~= 1
+                throw(MException("vcsl:invalidMixing","Line:""%s"" with " + ...
+                    "invalid mixing sum: %.2f.", cmdq(n), sum(mixing)));
+            end
+            
+            % parse code and validate
+            lcmd = code.split("&");
+            if numel(lcmd) ~= numel(mixing)
+                throw(MException("vcsl:invalidCode","Line:""%s"" with " + ...
+                    "inconsistent number between code and mixing.", cmdq(n)));
+            end
+            if ~all(ismember(lcmd, [map.keys("uniform"); lblmap.keys("uniform")]))
+                throw(MException("vcsl:invalidCode","Line:""%s"" with " + ...
+                    "undefined symbol in MAP.", cmdq(n)));
+            end
+
             bcmd = map{KWD_CLOSE_}; % logical 0
 
             % composite function, omit for-if cross-cut for such code
@@ -95,7 +137,7 @@ for n = 1:numel(cmdq)
                 end
             end
 
-            ctbl = [ctbl; {bcmd, str2double(cmd(2))}]; %#ok<AGROW>
+            ctbl = [ctbl; {code, {mixing}, bcmd, delay}]; %#ok<AGROW>
     end
 end
 

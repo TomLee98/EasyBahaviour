@@ -35,6 +35,7 @@ classdef EBCamera < handle
         IsConnected             % ___/get, 1-by-1 logical, false as default
         IsLiving                % ___/get, 1-by-1 logical, indicate camera living status
         IsRunning               % ___/get, 1-by-1 logical, false as default
+        IsSuspending            % ___/get, 1-by-1 logical, false as default
         LineInverter            % set/get, 1-by-1 logical, true as default
         LineMode                % ___/get, 1-by-1 string, in ["input", "output"]
         LineSelector            % set/get, 1-by-1 string, in ["Line1", ..., "Line4"], "Line2" as default

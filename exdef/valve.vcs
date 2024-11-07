@@ -1,7 +1,7 @@
 #========================================================================#
 # Valve Control Script Language (VCSL)
-# Version: 1.0
-# Release Date: 2024/10/31
+# Version: 1.1
+# Release Date: 2024/11/07
 # Author: Weihan Li
 # Contributed: Chen Ye
 #========================================================================#
@@ -18,10 +18,12 @@
 #   - MAP: valve macro defination identifier
 #========================================================================#
 # [VCSL Syntax]
-#<MAP:{key1:1,key2:2,...}>      # format as key:value, value as 1,2,...numeric for valve index binding on hardware
-#<CLOSE>                        # the key word for close all valve
-#<LOOP:n>                       # loop the next code block between '{' and  '}' n times
-#[key1(&key2&...)]:t            # key in MAP and t for keeping time, unit as second, & for valves open at the same time
+#<MAP:{key1:1,key2:2,...}>          # format as key:value, value as 1,2,...numeric for valve index binding on hardware
+#<CLOSE>                            # the key word for close all valve
+#<LOOP:n>                           # loop the next code block between '{' and  '}' n times
+#[key1(&key2&...)]:t,r1(&r2&...)    # key in MAP and t for keeping time, unit as second, 
+#                                   # & for valves open at the same time, r for mixing ratio with sum equals to 1
+#                                   # ,r can be omitted if only pure channel open
 #========================================================================#
 
 # Your code here:

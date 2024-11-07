@@ -19,7 +19,7 @@ classdef EBDAQ < handle
         cam_checker     (1,1)   timer               % agent for check camera port signal
         cam_vl_init     (1,1)   logical             % the initial camera votage level
         code_file       (1,1)   string              % source code file full path
-        commands        (:,2)   table               % table for valve commands, [cmd, delay]
+        commands        (:,4)   table               % table for valve commands, [code, mixing, cmd, delay]
         cmd_pointer     (1,1)   double              % positive integer indicates command index
         cmd_sender      (1,1)   timer               % agent for sending command to hardware
         cport           (1,2)   double              % [port, line], indicate camera switch channel
@@ -42,6 +42,7 @@ classdef EBDAQ < handle
         IsConnected         % ___/get, 1-by-1 logical
         IsRunning           % ___/get, 1-by-1 logical
         PortNumber          % set/get, 1-by-1 double, positive integer
+        TaskTable           % ___/get, n-by-2 table
         ValvesPort          % set/get, n-by-2 double, nonnegtive integer
         ValvesPortMapping   % ___/get, 1-by-1 dictionary
         Vendor              % set/get, 1-by-1 string
@@ -61,8 +62,9 @@ classdef EBDAQ < handle
             this.adjust_time = 0;
             this.cam_vl_init = false;
             this.code_file = string(['.', filesep, 'exdef', filesep, 'valve.vcs']);
-            this.commands = table('Size', [0, 2], 'VariableTypes',{'double', 'double'}, ...
-                                  'VariableNames',{'cmd', 'delay'});
+            this.commands = table('Size', [0, 4], ...
+                                  'VariableTypes',{'string', 'cell',   'double', 'double'}, ...
+                                  'VariableNames',{'code',   'mixing', 'cmd',    'delay'});
             this.cmd_pointer = 0;
             this.cport = [nan, nan];
             this.daqobj = [];
@@ -78,7 +80,7 @@ classdef EBDAQ < handle
             this.cmd_sender = timer("BusyMode",         "error", ...
                                     "ExecutionMode",    "fixedRate", ...
                                     "Name",             "EBValves_Agent", ...
-                                    "Period",           0.01, ...           % sending error
+                                    "Period",           0.02, ...           % 0.02s is minimal period
                                     "TasksToExecute",   inf, ...
                                     "TimerFcn",         @this.send_one_command, ...
                                     "StartFcn",         @this.send_reset);
@@ -87,7 +89,7 @@ classdef EBDAQ < handle
             this.cam_checker = timer("BusyMode",        "drop", ...
                                      "ExecutionMode",   "fixedDelay", ...
                                      "Name",            "EBCamera_Listener", ...
-                                     "Period",          0.002, ...          % detection error
+                                     "Period",          0.01, ...          % detection error
                                      "TasksToExecute",  inf, ...
                                      "TimerFcn",        @this.listen_for_trigger);
 
@@ -244,6 +246,16 @@ classdef EBDAQ < handle
             end
         end
 
+        %% TaskTable Getter
+        function value = get.TaskTable(this)
+            if this.IsConnected
+                value = this.commands(:,[1,2,4]);
+            else
+                value = table('Size',[0,3], 'VariableTypes', {'string', 'cell', 'double'}, ...
+                    'VariableNames',{'code', 'mixing', 'delay'});
+            end
+        end
+
         %% PortMapping Getter & Setter
         function value = get.ValvesPortMapping(this)
             value = this.vport_mapping;
@@ -316,6 +328,9 @@ classdef EBDAQ < handle
                         valve_channel = sprintf("port%d/line%d", this.vport(k,:));
                         addoutput(this.daqobj, this.device_id, valve_channel, "Digital");
                     end
+
+                    % interpret code file
+                    this.interpret();
                 catch ME
                     throw(ME);
                 end
@@ -363,13 +378,13 @@ classdef EBDAQ < handle
 
         function Test(this)
             % generate temporary test command
-            this.commands = cell2table([this.vport_mapping.values, ...
-                                        repmat({2}, size(this.vport,1)+1, 1)], ...
-                                        "VariableNames",{'cmd','delay'});
-            % configure sender
-            this.cmd_sender.ExecutionMode = "fixedRate";
-            this.cmd_sender.Period = 2;
-            this.cmd_sender.TasksToExecute = size(this.commands, 1);
+            this.commands = [array2table(strings(size(this.vport,1)+1,1), "VariableNames",{'code'}), ...
+                             cell(size(this.vport,1)+1,1), ...
+                             cell2table([this.vport_mapping.values, ...
+                             repmat({2}, size(this.vport,1)+1, 1)], "VariableNames",{'cmd', 'delay'})];
+            
+            % configure duration
+            this.duration = [0;2;4;6;8;10];
 
             % trigger sender
             start(this.cmd_sender);
@@ -379,12 +394,19 @@ classdef EBDAQ < handle
             % EBDAQ running before any other EBDevice
             % EBCamera trigger the inner cmd_sender timer
 
+            % interpret for last update
+            this.interpret();
+
             start(this.cam_checker);    
         end
 
         function value = GetCurrentValves(this)
             if this.IsConnected
-                value = this.commands.cmd(this.cmd_pointer);
+                if this.cmd_pointer > 0
+                    value = this.commands.cmd(this.cmd_pointer, :);
+                else
+                    value = [];
+                end
             else
                 throw(MException("EBDAQ:invalidAccess", "DAQ Controller is " + ...
                     "not running."));
@@ -405,8 +427,8 @@ classdef EBDAQ < handle
         end
     end
 
-    methods(Access = ?EBKernel)
-        function Interpret(this)
+    methods (Access = private)
+        function interpret(this)
             % EBKernel call this
             try
                 this.commands = this.Interpreter(this.code_file, ...
@@ -416,9 +438,7 @@ classdef EBDAQ < handle
                 throwAsCaller(ME);
             end
         end
-    end
 
-    methods (Access = private)
         function send_one_command(this, src, evt)
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
@@ -426,10 +446,10 @@ classdef EBDAQ < handle
             rt = toc(this.start_t);
 
             if rt >= this.duration(this.cmd_pointer + 1)
+                this.cmd_pointer = this.cmd_pointer + 1;
+
                 % send one command
                 write(this.daqobj, this.commands.cmd(this.cmd_pointer, :));
-
-                this.cmd_pointer = this.cmd_pointer + 1;
             end
         end
 
