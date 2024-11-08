@@ -84,7 +84,7 @@ for n = 1:numel(cmdq)
     cmdl = cmdq(n);
     switch cmdl
         case KWD_CLOSE_
-            ctbl = [ctbl; {KWD_CLOSE_, {nan}, map{KWD_CLOSE_}, 1}];    %#ok<AGROW> % delay as 1 (constant)
+            ctbl = [ctbl; {KWD_CLOSE_, {1}, map{KWD_CLOSE_}, 1}];    %#ok<AGROW> % delay as 1 (constant)
         otherwise
             % parse final command
             cmdl = cmdl.split(":");

@@ -34,6 +34,22 @@ classdef EBKernel < handle
             this.experiment = eprm;
         end
 
+        function delete(this)
+            % hardware disconnect
+            if this.devices.isConfigured
+                for ky = this.devices.keys("uniform")'
+                    if this.devices{ky}.IsConnected
+                        delete(this.devices{ky});       % call object delete
+                    end
+                end
+            end
+
+            % experiment clean
+            %
+
+            clear("this");
+        end
+
         %% Devices Getter
         function value = get.Devices(this)
             value = this.devices;
