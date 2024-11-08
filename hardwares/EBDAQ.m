@@ -77,22 +77,22 @@ classdef EBDAQ < handle
             this.vendor = "";
 
             % init command sending timer
-            this.cmd_sender = timer("BusyMode",         "error", ...
+            this.cmd_sender = timer("BusyMode",         "queue", ...
                                     "ExecutionMode",    "fixedRate", ...
                                     "Name",             "EBValves_Agent", ...
-                                    "Period",           0.02, ...           % 0.02s is minimal period
+                                    "Period",           0.05, ...           % 0.05s is minimal stable period
                                     "TasksToExecute",   inf, ...
                                     "TimerFcn",         @this.send_one_command, ...
-                                    "StartFcn",         @this.send_init, ...
-                                    "StopFcn",          @this.send_reset);
+                                    "StartFcn",         @this.send_init);
 
             % init camera port checking timer
             this.cam_checker = timer("BusyMode",        "drop", ...
                                      "ExecutionMode",   "fixedDelay", ...
                                      "Name",            "EBCamera_Listener", ...
-                                     "Period",          0.01, ...          % detection error
+                                     "Period",          0.02, ...          % detection error
                                      "TasksToExecute",  inf, ...
-                                     "TimerFcn",        @this.listen_for_trigger);
+                                     "TimerFcn",        @this.listen_for_trigger, ...
+                                     "StopFcn",         @this.trigger_cmd_sender);
 
             % disable raw devices warning
             EBDAQ.ManageWarnings("off");
@@ -375,26 +375,21 @@ classdef EBDAQ < handle
         end
 
         function Test(this)
-            % generate temporary test command
-            this.commands = [array2table(strings(size(this.vport,1)+1,1), "VariableNames",{'code'}), ...
-                             cell(size(this.vport,1)+1,1), ...
-                             cell2table([this.vport_mapping.values, ...
-                             repmat({2}, size(this.vport,1)+1, 1)], "VariableNames",{'cmd', 'delay'})];
-            
-            % configure duration
-            this.duration = [0;2;4;6;8;10];
+            % just write, pause, and write
+            % do not use cmd_sender
 
-            % trigger sender
-            start(this.cmd_sender);
+            if this.IsConnected
+                write(this.daqobj, false(size(this.commands.cmd(1,:))));
+                pause(0.5);
+                write(this.daqobj, true(size(this.commands.cmd(1,:))));
+                pause(1);
+                write(this.daqobj, false(size(this.commands.cmd(1,:))));
+            end
         end
 
         function Run(this)
             % EBDAQ running before any other EBDevice
             % EBCamera trigger the inner cmd_sender timer
-
-            % interpret for last update
-            this.interpret();
-
             start(this.cam_checker);    
         end
 
@@ -466,25 +461,23 @@ classdef EBDAQ < handle
             this.start_t = tic;     % record start time
         end
 
-        function send_reset(this, src, evt)
-            src; %#ok<VUNUS>
-            evt; %#ok<VUNUS>
-
-            % recover command and duration
-            this.interpret();
-        end
-
         function listen_for_trigger(this, src, evt)
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
+            % detected voltage changing
             [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
-            if cam_vl == EBDAQ.VOLTAGE_HIGH   % detected voltage changing
+            if cam_vl == EBDAQ.VOLTAGE_HIGH   
                 stop(src);      % stop this timer immediately
-
-                % trigger valves running
-                start(this.cmd_sender);
             end
+        end
+
+        function trigger_cmd_sender(this, src, evt)
+            src; %#ok<VUNUS>
+            evt; %#ok<VUNUS>
+
+            % trigger valves running
+            start(this.cmd_sender);
         end
     end
 

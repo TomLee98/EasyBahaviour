@@ -38,8 +38,8 @@ classdef EBKernel < handle
             % hardware disconnect
             if this.devices.isConfigured
                 for ky = this.devices.keys("uniform")'
-                    if this.devices{ky}.IsConnected
-                        delete(this.devices{ky});       % call object delete
+                    if isobject(this.devices{ky})
+                        this.devices{ky}.delete();       % call object delete
                     end
                 end
             end
