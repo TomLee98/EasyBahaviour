@@ -6,7 +6,7 @@ classdef EBKernel < handle
     % better performance
 
     properties(Constant, Hidden)
-        DAQ_DELAY = 0.1
+        DAQ_DELAY = 0.0
     end
 
     properties(Access = public, Dependent)
