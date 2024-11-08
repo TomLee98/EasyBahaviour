@@ -3,6 +3,8 @@ classdef EBDAQ < handle
 
     properties(Constant)
         NLINE_EACH_PORT = 8
+        VOLTAGE_HIGH = true
+        VOLTAGE_LOW = false
     end
 
     properties(SetAccess=immutable, GetAccess=public)
@@ -17,7 +19,6 @@ classdef EBDAQ < handle
     properties(Access = private)
         adjust_time     (1,1)   double              % avoiding timer error accumulation, seconds
         cam_checker     (1,1)   timer               % agent for check camera port signal
-        cam_vl_init     (1,1)   logical             % the initial camera votage level
         code_file       (1,1)   string              % source code file full path
         commands        (:,4)   table               % table for valve commands, [code, mixing, cmd, delay]
         cmd_pointer     (1,1)   double              % positive integer indicates command index
@@ -60,7 +61,6 @@ classdef EBDAQ < handle
 
             % 
             this.adjust_time = 0;
-            this.cam_vl_init = false;
             this.code_file = string(['.', filesep, 'exdef', filesep, 'valve.vcs']);
             this.commands = table('Size', [0, 4], ...
                                   'VariableTypes',{'string', 'cell',   'double', 'double'}, ...
@@ -321,9 +321,6 @@ classdef EBDAQ < handle
                     camera_channel = sprintf("port%d/line%d", this.cport);
                     addinput(this.daqobj, this.device_id, camera_channel, "Digital");
 
-                    % record initial camera port votage level
-                    [this.cam_vl_init, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
-
                     % valves channel as output:
                     for k = 1:size(this.vport, 1)
                         valve_channel = sprintf("port%d/line%d", this.vport(k,:));
@@ -482,7 +479,7 @@ classdef EBDAQ < handle
             evt; %#ok<VUNUS>
 
             [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
-            if cam_vl ~= this.cam_vl_init       % detected voltage changing
+            if cam_vl == EBDAQ.VOLTAGE_HIGH   % detected voltage changing
                 stop(src);      % stop this timer immediately
 
                 % trigger valves running
