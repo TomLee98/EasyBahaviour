@@ -80,7 +80,7 @@ classdef EBDAQ < handle
             this.cmd_sender = timer("BusyMode",         "queue", ...
                                     "ExecutionMode",    "fixedRate", ...
                                     "Name",             "EBValves_Agent", ...
-                                    "Period",           0.05, ...           % 0.05s is minimal stable period
+                                    "Period",           0.01, ...           % sending error, 0.01s is minimal stable period
                                     "TasksToExecute",   inf, ...
                                     "TimerFcn",         @this.send_one_command, ...
                                     "StartFcn",         @this.send_init);
@@ -89,10 +89,9 @@ classdef EBDAQ < handle
             this.cam_checker = timer("BusyMode",        "drop", ...
                                      "ExecutionMode",   "fixedDelay", ...
                                      "Name",            "EBCamera_Listener", ...
-                                     "Period",          0.02, ...          % detection error
+                                     "Period",          0.01, ...          % detection error, 0.01 as minimal stable period
                                      "TasksToExecute",  inf, ...
-                                     "TimerFcn",        @this.listen_for_trigger, ...
-                                     "StopFcn",         @this.trigger_cmd_sender);
+                                     "TimerFcn",        @this.listen_for_trigger);
 
             % disable raw devices warning
             EBDAQ.ManageWarnings("off");
@@ -379,10 +378,15 @@ classdef EBDAQ < handle
             % do not use cmd_sender
 
             if this.IsConnected
+                % write close command
                 write(this.daqobj, false(size(this.commands.cmd(1,:))));
-                pause(0.5);
+                % read for init inner stack
+                read(this.daqobj, OutputFormat="Matrix");
+
                 write(this.daqobj, true(size(this.commands.cmd(1,:))));
-                pause(1);
+                pause(0.5);
+
+                % write close command
                 write(this.daqobj, false(size(this.commands.cmd(1,:))));
             end
         end
@@ -469,15 +473,8 @@ classdef EBDAQ < handle
             [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
             if cam_vl == EBDAQ.VOLTAGE_HIGH   
                 stop(src);      % stop this timer immediately
+                start(this.cmd_sender);
             end
-        end
-
-        function trigger_cmd_sender(this, src, evt)
-            src; %#ok<VUNUS>
-            evt; %#ok<VUNUS>
-
-            % trigger valves running
-            start(this.cmd_sender);
         end
     end
 

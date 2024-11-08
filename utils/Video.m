@@ -91,7 +91,7 @@ classdef Video < matlab.mixin.Copyable
         function AddFrame(this, image_, time_)
             arguments
                 this
-                image_  (:,:)   {mustBeNonnegative}
+                image_  (:,:)
                 time_   (1,1)   double  {mustBeNonnegative} = numel(this.time) + 1
             end
 

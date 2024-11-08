@@ -5,8 +5,8 @@ classdef EBKernel < handle
     % Note that kernel only provides the basic properties and function for
     % better performance
 
-    properties (Constant, Hidden)
-        REMOTE_TIME = 0.5
+    properties(Constant, Hidden)
+        DAQ_DELAY = 0.4
     end
 
     properties(Access = public, Dependent)
@@ -24,6 +24,7 @@ classdef EBKernel < handle
         experiment  (1,1)  
         start_time  (1,1)   uint64  = 0
         duration    (1,1)   double  = 0
+        adjust_t    (1,1)   double  = 0                 % adjust time because of camera acquire using
     end
     
     methods
@@ -63,8 +64,10 @@ classdef EBKernel < handle
         function value = get.LeftTime(this)
             if this.devices.isConfigured ...
                     && this.devices{"daq_device"}.IsConnected
-                if this.devices{"camera"}.IsRunning
-                    value = this.duration - toc(this.start_time);
+                if this.devices{"camera"}.IsRunning ...
+                        && (this.start_time ~= 0)
+                    %                            camera left time   +  valves delay
+                    value = max(0, this.duration - toc(this.start_time) + this.DAQ_DELAY);
                 else
                     value = this.duration;
                 end
@@ -173,9 +176,10 @@ classdef EBKernel < handle
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             %% turn on camera and acquire right now
-            % synchronous with camera
-            this.start_time = this.devices{"camera"}.Acquire(this.duration);
+            this.devices{"camera"}.Acquire(this.duration+this.DAQ_DELAY);
             
+            this.start_time = this.devices{"camera"}.StartTime;
+
             while this.devices{"camera"}.IsRunning
                 frame = this.devices{"camera"}.GetCurrentFrame();
                 hImage.CData = frame{1};
@@ -183,6 +187,7 @@ classdef EBKernel < handle
             end
 
             close(gcf);
+            this.start_time = 0;
 
         end
 

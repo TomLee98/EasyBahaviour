@@ -48,6 +48,7 @@ classdef EBCamera < handle
         ReadoutTime             % ___/get, 1-by-1 double positive integer
         ROIWidth                % set/get, 1-by-1 double positive integer
         ROIHeight               % set/get, 1-by-1 double positive integer
+        StartTime               % ___/get, 1-by-1 uint64, exact absolute camera beginning time, come from tic
         VideoResolution         % ___/get, 1-by-2 double positive integer
     end
 
@@ -629,6 +630,11 @@ classdef EBCamera < handle
             end
         end
 
+        %% StartTime Getter
+        function value = get.StartTime(this)
+            value = this.start_t;
+        end
+
         %% VideoResolution Getter
         function value = get.VideoResolution(this)
             if this.IsConnected
@@ -715,26 +721,25 @@ classdef EBCamera < handle
             end
         end
 
-        function st = Acquire(this, time)
+        function Acquire(this, time)
             arguments
                 this
                 time    (1,1)   double  {mustBePositive} = 10   % unit as seconds, 10 s as default
             end
-
-            this.duration = time;
             
             if this.IsConnected
                 if this.IsRunning
                     warning("EBCamera:runningInstance", "An EBCamera instance is already " + ...
                         "running. You can create other EBCameras for multi-recording.");
                 else
+                    % set running duration
+                    this.duration = time;
+
                     % clear buffer for initializing
                     this.VideoBuffer.Clear();
 
                     % start timer
                     start(this.cap_agent);
-                    this.start_t = tic;
-                    st = this.start_t;
                 end
             else
                 throw(MException("EBCamera:invalidAction", "Disconnected camera " + ...
@@ -778,7 +783,7 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            trigger(this.viobj);
+            trigger(this.viobj);        % here is camera start time
             img = getdata(this.viobj);
 
             % input to video buffer
@@ -796,6 +801,9 @@ classdef EBCamera < handle
             evt; %#ok<VUNUS>
 
             start(this.viobj);
+
+            % set the camera beginning
+            this.start_t = tic;  
         end
 
         function capture_end(this, src, evt)

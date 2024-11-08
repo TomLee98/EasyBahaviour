@@ -60,17 +60,8 @@ classdef mQueue < matlab.mixin.Copyable
         end
 
         function clear(this)
-            cellfun(@cc, this.data_v);
-            this.data_v = {};
+            this.data_v = {};   % drop, omit handle->deep clear
             this.length = 0;
-
-            function cc(x)
-                if ~isempty(x) 
-                    if isobject(x) && isvalid(x)
-                        delete(x);
-                    end
-                end
-            end
         end
 
         function delete(this) %#ok<INUSD>
@@ -94,16 +85,6 @@ classdef mQueue < matlab.mixin.Copyable
         function cpt = copyElement(this)
             cpt = copyElement@matlab.mixin.Copyable(this);
             cpt.data_v = this.data_v;   % cell copy
-        end
-    end
-
-    methods(Static)
-        function sz = size()
-            sz = [1, 1];
-        end
-
-        function tf = isscalar()
-            tf = true;
         end
     end
 end
