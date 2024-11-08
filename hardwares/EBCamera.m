@@ -3,7 +3,8 @@ classdef EBCamera < handle
     %system, Which support basic camera settings and capturing images
     
     properties(Access=private)
-        abs_start_t (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
+        start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
+        duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
         adapter     (1,1)   string                              % 1-by-1 string, the hardware adapter
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
@@ -714,27 +715,26 @@ classdef EBCamera < handle
             end
         end
 
-        function Acquire(this, time)
+        function st = Acquire(this, time)
             arguments
                 this
                 time    (1,1)   double  {mustBePositive} = 10   % unit as seconds, 10 s as default
             end
+
+            this.duration = time;
             
             if this.IsConnected
                 if this.IsRunning
                     warning("EBCamera:runningInstance", "An EBCamera instance is already " + ...
                         "running. You can create other EBCameras for multi-recording.");
                 else
-                    % calculate and set running times
-                    ntasks = ceil(time*this.fr_target);
-                    this.cap_agent.TasksToExecute = ntasks;
-
                     % clear buffer for initializing
                     this.VideoBuffer.Clear();
 
                     % start timer
-                    this.abs_start_t = tic;
                     start(this.cap_agent);
+                    this.start_t = tic;
+                    st = this.start_t;
                 end
             else
                 throw(MException("EBCamera:invalidAction", "Disconnected camera " + ...
@@ -782,7 +782,13 @@ classdef EBCamera < handle
             img = getdata(this.viobj);
 
             % input to video buffer
-            this.VideoBuffer.AddFrame(img, toc(this.abs_start_t));
+            timestamp = toc(this.start_t);
+            if timestamp > this.duration
+                % give up last frame
+                stop(src);
+            else
+                this.VideoBuffer.AddFrame(img, timestamp);
+            end
         end
 
         function capture_begin(this, src, evt)

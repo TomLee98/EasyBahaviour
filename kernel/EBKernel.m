@@ -5,6 +5,10 @@ classdef EBKernel < handle
     % Note that kernel only provides the basic properties and function for
     % better performance
 
+    properties (Constant, Hidden)
+        REMOTE_TIME = 0.5
+    end
+
     properties(Access = public, Dependent)
         Devices             % ___/get, 1-by-1 dictionary
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
@@ -57,10 +61,15 @@ classdef EBKernel < handle
 
         %% LeftTime Getter
         function value = get.LeftTime(this)
-            if this.duration == 0
-                value = nan;
+            if this.devices.isConfigured ...
+                    && this.devices{"daq_device"}.IsConnected
+                if this.devices{"camera"}.IsRunning
+                    value = this.duration - toc(this.start_time);
+                else
+                    value = this.duration;
+                end
             else
-                value = this.duration - toc(this.start_time);
+                value = nan;
             end
         end
 
@@ -77,18 +86,13 @@ classdef EBKernel < handle
                 dev_status = (dev_status ...
                     && this.devices{ky}.IsConnected);
             end
-            if dev_status, dev_status = EBStatus.DEVICE_READY; 
-            else, dev_status = EBStatus.DEVICE_UNREADY;
-            end
-
-            if dev_status == EBStatus.DEVICE_READY
+            if dev_status
                 if this.devices{"camera"}.IsRunning
                     value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_RUNNING];
                 else
                     value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_READY];
-                end
+                end 
             else
-                % at least one device is not connected
                 value = [EBStatus.DEVICE_UNREADY, EBStatus.KERNEL_UNREADY];
             end
         end
@@ -160,24 +164,26 @@ classdef EBKernel < handle
         function run(this)
             %TODO: pipeline uses experiment defination
 
+            % live
+            hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
+                            this.devices{"camera"}.ROIWidth));
+            colormap(gca, "gray");
+
             %% turn on DAQ device (first of all)
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             %% turn on camera and acquire right now
-            this.devices{"camera"}.Acquire(this.duration);
-
-            this.start_time = tic; % set the begin time point
-
-            % live
-            hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
-                                 this.devices{"camera"}.ROIWidth));
-            colormap(gca, "gray");
+            % synchronous with camera
+            this.start_time = this.devices{"camera"}.Acquire(this.duration);
+            
             while this.devices{"camera"}.IsRunning
-                t = tic;
                 frame = this.devices{"camera"}.GetCurrentFrame();
                 hImage.CData = frame{1};
-                pause(0.1-toc(t));         % approximate 10 Hz
+                pause(0.05);
             end
+
+            close(gcf);
+
         end
 
         function stop(this)
