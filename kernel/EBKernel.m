@@ -168,25 +168,24 @@ classdef EBKernel < handle
             %TODO: pipeline uses experiment defination
 
             % live
-            figure("Name", "Video Player (Waiting...)");
+            figure("Name", "Video Player - Waiting)");
             hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
                             this.devices{"camera"}.ROIWidth));
             colormap(gca, "gray");
-            pause(1);
-            set(gcf, "Name", "Video Player (Running...)");
 
             %% turn on DAQ device (first of all)
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             %% turn on camera and acquire right now
             this.devices{"camera"}.Acquire(this.duration);
+            set(gcf, "Name", "Video Player - Running");
             
             this.start_time = this.devices{"camera"}.StartTime;
 
             while this.devices{"camera"}.IsRunning
                 frame = this.devices{"camera"}.GetCurrentFrame();
                 hImage.CData = frame{1};
-                pause(0.05);
+                pause(0.1);
             end
 
             close(gcf);
