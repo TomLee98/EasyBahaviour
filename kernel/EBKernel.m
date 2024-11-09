@@ -5,8 +5,8 @@ classdef EBKernel < handle
     % Note that kernel only provides the basic properties and function for
     % better performance
 
-    properties(Constant, Hidden)
-        DAQ_DELAY = 0.2
+    properties (Constant, Hidden)
+        DAQ_DELAY = 0.1
     end
 
     properties(Access = public, Dependent)
@@ -66,7 +66,6 @@ classdef EBKernel < handle
                     && this.devices{"daq_device"}.IsConnected
                 if this.devices{"camera"}.IsRunning ...
                         && (this.start_time ~= 0)
-                    %                            camera left time   +  valves delay
                     value = max(0, this.duration - toc(this.start_time) + this.DAQ_DELAY);
                 else
                     value = this.duration;
@@ -178,7 +177,7 @@ classdef EBKernel < handle
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             %% turn on camera and acquire right now
-            this.devices{"camera"}.Acquire(this.duration);
+            this.devices{"camera"}.Acquire(this.duration + this.DAQ_DELAY);
             set(gcf, "Name", "Video Player - Running");
             
             this.start_time = this.devices{"camera"}.StartTime;

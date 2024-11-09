@@ -76,6 +76,7 @@ classdef EBCamera < handle
                                    "ExecutionMode", "fixedRate", ...
                                    "Period",        1/25,  ...          modified
                                    "TasksToExecute",inf, ...            modified
+                                   "StartDelay",    0.25, ...
                                    "StartFcn",      @this.capture_begin, ...
                                    "StopFcn",       @this.capture_end, ...
                                    "TimerFcn",      @this.capture_one_frame);
@@ -388,7 +389,8 @@ classdef EBCamera < handle
         function value = get.IsRunning(this)
             if this.IsConnected
                 % mark the agent running status
-                value = isequal(this.cap_agent.Running, "on");
+                value = isequal(this.cap_agent.Running, "on") ...
+                    && (this.start_t~=0);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get status."));
@@ -739,7 +741,7 @@ classdef EBCamera < handle
                     this.VideoBuffer.Clear();
 
                     % start timer
-                    start(this.cap_agent);
+                    start(this.cap_agent);      % 
                 end
             else
                 throw(MException("EBCamera:invalidAction", "Disconnected camera " + ...
@@ -783,7 +785,7 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            trigger(this.viobj);        % here is camera start time
+            trigger(this.viobj);        % here is DAQ start time
             img = getdata(this.viobj);
 
             % input to video buffer
@@ -800,10 +802,10 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            start(this.viobj);
+            start(this.viobj);  % about 220 ms
 
             % set the camera beginning
-            this.start_t = tic;  
+            this.start_t = tic;
         end
 
         function capture_end(this, src, evt)
@@ -811,6 +813,7 @@ classdef EBCamera < handle
             evt; %#ok<VUNUS>
 
             stop(this.viobj);
+            this.start_t = 0;
         end
     end
 
