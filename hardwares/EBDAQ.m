@@ -18,7 +18,7 @@ classdef EBDAQ < handle
     
     properties(Access = private)
         adjust_time     (1,1)   double              % avoiding timer error accumulation, seconds
-        cam_checker     (1,1)   timer               % agent for check camera port signal
+        cam_listener    (1,1)   timer               % agent for listening camera port signal
         code_file       (1,1)   string              % source code file full path
         commands        (:,4)   table               % table for valve commands, [code, mixing, cmd, delay]
         cmd_pointer     (1,1)   double              % positive integer indicates command index
@@ -80,17 +80,18 @@ classdef EBDAQ < handle
             this.cmd_sender = timer("BusyMode",         "queue", ...
                                     "ExecutionMode",    "fixedRate", ...
                                     "Name",             "EBValves_Agent", ...
-                                    "Period",           0.1, ...           % sending error, 0.01s is minimal stable period
+                                    "Period",           0.05, ...           % sending error, 0.01s is minimal stable period
                                     "TasksToExecute",   inf, ...
                                     "TimerFcn",         @this.send_one_command, ...
                                     "StartFcn",         @this.send_init);
 
             % init camera port checking timer
-            this.cam_checker = timer("BusyMode",        "drop", ...
+            this.cam_listener = timer("BusyMode",        "drop", ...
                                      "ExecutionMode",   "fixedDelay", ...
                                      "Name",            "EBCamera_Listener", ...
                                      "Period",          0.02, ...          % detection error, 0.01 as minimal stable period
                                      "TasksToExecute",  inf, ...
+                                     "StartFcn",        @this.listen_init, ...
                                      "TimerFcn",        @this.listen_for_trigger);
 
             % disable raw devices warning
@@ -99,8 +100,8 @@ classdef EBDAQ < handle
 
         function delete(this)
             %
-            stop(this.cam_checker);
-            delete(this.cam_checker);
+            stop(this.cam_listener);
+            delete(this.cam_listener);
 
             % free data acquisition object
              if this.IsConnected
@@ -394,7 +395,7 @@ classdef EBDAQ < handle
         function Run(this)
             % EBDAQ running before any other EBDevice
             % EBCamera trigger the inner cmd_sender timer
-            start(this.cam_checker);    
+            start(this.cam_listener);    
         end
 
         function value = GetCurrentValves(this)
@@ -465,13 +466,22 @@ classdef EBDAQ < handle
             this.start_t = tic;     % record start time
         end
 
+        function listen_init(this, src, evt)
+            src; %#ok<VUNUS>
+            evt; %#ok<VUNUS>
+
+            % use init because tic beginning use about 0 ~ 0.3s
+            % is random and independent
+            this.start_t = tic;
+        end
+
         function listen_for_trigger(this, src, evt)
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
             % detected voltage changing
             [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
-            if cam_vl == EBDAQ.VOLTAGE_HIGH   
+            if cam_vl == EBDAQ.VOLTAGE_HIGH
                 stop(src);      % stop this timer immediately
                 start(this.cmd_sender);
             end
