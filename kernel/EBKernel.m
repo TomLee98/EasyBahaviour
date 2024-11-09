@@ -6,7 +6,7 @@ classdef EBKernel < handle
     % better performance
 
     properties (Constant, Hidden)
-        DAQ_DELAY = 0.15
+        DAQ_DELAY = 0.2
     end
 
     properties(Access = public, Dependent)
@@ -24,7 +24,7 @@ classdef EBKernel < handle
         experiment  (1,1)  
         start_time  (1,1)   uint64  = 0
         duration    (1,1)   double  = 0
-        adjust_t    (1,1)   double  = 0                 % adjust time because of camera acquire using
+        adjust_t    (1,1)   double  = 0                 % adjust time because of kernel using
     end
     
     methods
@@ -179,7 +179,7 @@ classdef EBKernel < handle
             %% turn on camera and acquire right now
             this.devices{"camera"}.Acquire(this.duration + this.DAQ_DELAY);
 
-            pause(0.3);
+            pause(0.2);
             set(gcf, "Name", "Video Player - Running");
             
             this.start_time = this.devices{"camera"}.StartTime;

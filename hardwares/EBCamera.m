@@ -389,8 +389,7 @@ classdef EBCamera < handle
         function value = get.IsRunning(this)
             if this.IsConnected
                 % mark the agent running status
-                value = isequal(this.cap_agent.Running, "on") ...
-                    && (this.start_t~=0);
+                value = logical(this.start_t);
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get status."));
@@ -741,7 +740,7 @@ classdef EBCamera < handle
                     this.VideoBuffer.Clear();
 
                     % start timer
-                    start(this.cap_agent);      % 
+                    start(this.cap_agent);
                 end
             else
                 throw(MException("EBCamera:invalidAction", "Disconnected camera " + ...
