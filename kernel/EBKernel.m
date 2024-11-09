@@ -6,7 +6,7 @@ classdef EBKernel < handle
     % better performance
 
     properties(Constant, Hidden)
-        DAQ_DELAY = 0.0
+        KERNEL_ADJUST_TIME = -0.1
     end
 
     properties(Access = public, Dependent)
@@ -67,7 +67,7 @@ classdef EBKernel < handle
                 if this.devices{"camera"}.IsRunning ...
                         && (this.start_time ~= 0)
                     %                            camera left time   +  valves delay
-                    value = max(0, this.duration - toc(this.start_time) + this.DAQ_DELAY);
+                    value = max(0, this.duration - toc(this.start_time) + this.KERNEL_ADJUST_TIME);
                 else
                     value = this.duration;
                 end
@@ -168,15 +168,18 @@ classdef EBKernel < handle
             %TODO: pipeline uses experiment defination
 
             % live
+            figure("Name", "Video Player (Waiting...)");
             hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
                             this.devices{"camera"}.ROIWidth));
             colormap(gca, "gray");
+            pause(1);
+            set(gcf, "Name", "Video Player (Running...)");
 
             %% turn on DAQ device (first of all)
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             %% turn on camera and acquire right now
-            this.devices{"camera"}.Acquire(this.duration+this.DAQ_DELAY);
+            this.devices{"camera"}.Acquire(this.duration);
             
             this.start_time = this.devices{"camera"}.StartTime;
 
