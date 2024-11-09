@@ -171,8 +171,8 @@ classdef EBKernel < handle
             hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
                             this.devices{"camera"}.ROIWidth));
             colormap(gca, "gray");
-            pause(0.2);
-
+            drawnow
+            
             %% turn on DAQ device (first of all)
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
