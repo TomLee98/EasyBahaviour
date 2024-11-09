@@ -6,7 +6,7 @@ classdef EBKernel < handle
     % better performance
 
     properties(Constant, Hidden)
-        KERNEL_ADJUST_TIME = -0.1
+        DAQ_DELAY = 0.2
     end
 
     properties(Access = public, Dependent)
@@ -67,7 +67,7 @@ classdef EBKernel < handle
                 if this.devices{"camera"}.IsRunning ...
                         && (this.start_time ~= 0)
                     %                            camera left time   +  valves delay
-                    value = max(0, this.duration - toc(this.start_time) + this.KERNEL_ADJUST_TIME);
+                    value = max(0, this.duration - toc(this.start_time) + this.DAQ_DELAY);
                 else
                     value = this.duration;
                 end
@@ -172,11 +172,10 @@ classdef EBKernel < handle
             hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
                             this.devices{"camera"}.ROIWidth));
             colormap(gca, "gray");
-            pause(0.1);
+            pause(0.2);
 
             %% turn on DAQ device (first of all)
             this.devices{"daq_device"}.Run();   % waitfor camera switching
-            pause(0.4);
 
             %% turn on camera and acquire right now
             this.devices{"camera"}.Acquire(this.duration);
