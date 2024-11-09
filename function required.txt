@@ -1,11 +1,18 @@
 版本号      发行代号           中文代号  
-V1.0        Panda               熊猫
+V1          Panda               熊猫
   |
-  |- V1.0.0     2024/11/06
+  |- V1.0       2024/11/06
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
-  |     |- [Update] 
-  #
-
-v1.1
-  |- 
+  |- V1.1       2024/11/10
+  |     |- [Update] TODO: RAW images export as Tiff file
+  |     |- [Update] TODO: Add 'Video Player' Component 
+  |     |- [Update] TODO: Add 'Update' function
+  |- V1.2       2024/11
+  |     |- [Update] TODO: Add Tracker
+  |- V1.3       2024/11
+  |     |- [Update] TODO: Add Parameterization
+  |- V1.3       2024/11/
+  |     |- [Update] TODO: Preference Options support: <appearence>
+  |     |- [Update] TODO: Add Beightness/Contrast
+  |     |- [Update] TODO: Add Scale

@@ -156,15 +156,6 @@ classdef Video < handle
         end
     end
 
-    % methods(Access = protected)
-    %     function cpt = copyElement(this)
-    %         cpt = copyElement@matlab.mixin.Copyable(this);
-    %         cpt.image_queue = this.image_queue;   % cell copy
-    %         cpt.time = this.time;
-    %         cpt.mode = this.mode;
-    %     end
-    % end
-
     methods (Static)
         function e = empty()
             e = Video("dynamic", [], []);
