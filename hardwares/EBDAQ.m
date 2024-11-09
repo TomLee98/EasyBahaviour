@@ -455,10 +455,8 @@ classdef EBDAQ < handle
                 end
 
                 % send one command
-                tic;
                 cmd = this.commands.cmd(this.cmd_pointer, :);
                 write(this.daqobj, cmd);
-                toc;
             end
         end
 
