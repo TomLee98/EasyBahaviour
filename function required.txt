@@ -4,7 +4,7 @@ V1.0        Panda               熊猫
   |- V1.0.0     2024/11/06
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
-  |     |- [Update]
+  |     |- [Update] 
   #
 
 v1.1
