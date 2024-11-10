@@ -1,4 +1,4 @@
-classdef Video < handle
+classdef Images < handle
     %VIDEO This class defines 2D Video
 
     properties(Access=public, Dependent)
@@ -14,7 +14,7 @@ classdef Video < handle
     end
     
     methods
-        function this = Video(mode_, images_, time_)
+        function this = Images(mode_, images_, time_)
             %VIDEO A Constructor
             arguments
                 mode_   (1,1)   string  {mustBeMember(mode_, ["static", "dynamic"])} = "dynamic"
@@ -158,7 +158,7 @@ classdef Video < handle
 
     methods (Static)
         function e = empty()
-            e = Video("dynamic", [], []);
+            e = Images("dynamic", [], []);
         end
     end
 end

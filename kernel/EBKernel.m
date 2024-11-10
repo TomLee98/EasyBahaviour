@@ -11,7 +11,10 @@ classdef EBKernel < handle
 
     properties(Access = public, Dependent)
         Devices             % ___/get, 1-by-1 dictionary
+        Frames              % ___/get, 1-by-1 Images object
+        FramesInfo          % ___/get, 0-by-13 or 1-by-13 table
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
+        Scale               % set/get, 1-by-1 struct, with [xRes, yRes, resUnit]
         Status              % ___/get, 1-by-2 EBStatus, with [DeviceStatus, KernelStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
@@ -22,6 +25,7 @@ classdef EBKernel < handle
         devices     (1,1)   dictionary = dictionary()   % devices dictionary, with 
                                                         % {camera, daq_device, pressure_controller, flowmeter}
         experiment  (1,1)  
+        scale       (1,1)   struct = struct("xRes",0.1, "yRes",0.1, "resUnit","mm");
         start_time  (1,1)   uint64  = 0
         duration    (1,1)   double  = 0
         adjust_t    (1,1)   double  = 0                 % adjust time because of kernel using
@@ -60,6 +64,52 @@ classdef EBKernel < handle
             value = this.devices;
         end
 
+        %% Frames Getter
+        function value = get.Frames(this)
+            if this.devices.isConfigured ...
+                    && this.devices{"camera"}.IsConnected
+                value = this.devices{"camera"}.ImagesBuffer;
+            else
+                value = Images.empty();
+            end
+        end
+
+        %% FramesInfo Getter
+        function value = get.FramesInfo(this)
+            if this.devices.isConfigured ...
+                    && this.devices{"camera"}.IsConnected
+                value = table('Size', [1, 13], ...
+                    'VariableTypes', {'double','double','double','double','double', ...
+                    'double','double','double','double','double','string','string','datetime'}, ...
+                    'VariableNames', {'width', 'height', 'xOffset', 'yOffset', 'xBinning', ...
+                    'yBinning', 'xResolution','yResolution', 'frameRate', 'bitDepth', ...
+                    'deviceModel', 'resolutionUnit','dateTime'});
+
+                value.width = this.devices{"camera"}.ROIWidth;
+                value.height = this.devices{"camera"}.ROIHeight;
+                value.xOffset = this.devices{"camera"}.OffsetX;
+                value.yOffset = this.devices{"camera"}.OffsetY;
+                value.xBinning = this.devices{"camera"}.BinningHorizontal;
+
+                value.yBinning = this.devices{"camera"}.BinningVertical;
+                value.xResolution = this.scale.xRes;
+                value.yResolution = this.scale.yRes;
+                value.frameRate = this.devices{"camera"}.AcquireFrameRate;
+                value.bitDepth = this.devices{"camera"}.BitDepth;
+
+                value.deviceModel = this.devices{"camera"}.DeviceModelName;
+                value.resolutionUnit = this.scale.resUnit;
+                value.dateTime = this.devices{"camera"}.DateTime;
+            else
+                value = table('Size', [0, 13], ...
+                    'VariableTypes', {'double','double','double','double','double', ...
+                    'double','double','double','double','double','string','string','datetime'}, ...
+                    'VariableNames', {'width', 'height', 'xOffset', 'yOffset', 'xBinning', ...
+                    'yBinning', 'xResolution','yResolution', 'frameRate', 'bitDepth', ...
+                    'deviceModel', 'resolutionUnit','dateTime'});
+            end
+        end
+
         %% LeftTime Getter
         function value = get.LeftTime(this)
             if this.devices.isConfigured ...
@@ -72,6 +122,25 @@ classdef EBKernel < handle
                 end
             else
                 value = nan;
+            end
+        end
+
+        %% Scale Getter & Setter
+        function value = get.Scale(this)
+            value = this.scale;
+        end
+
+        function set.Scale(this, value)
+            arguments
+                this
+                value   (1,1)   struct
+            end
+
+            if ~isempty(setdiff(string(fieldnames(value)), ["xRes","yRes","resUnit"]))
+                throw(MException("EBKernel:invalidScale", "Scale must be struct scalar with " + ...
+                    "xRes, yRes and resUnit."));
+            else
+                this.scale = value;
             end
         end
 

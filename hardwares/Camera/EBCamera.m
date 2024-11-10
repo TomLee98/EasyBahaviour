@@ -3,13 +3,14 @@ classdef EBCamera < handle
     %system, Which support basic camera settings and capturing images
     
     properties(Access=private)
-        start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
-        duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
         adapter     (1,1)   string                              % 1-by-1 string, the hardware adapter
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
+        duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
         fr_target   (1,1)   double      {mustBePositive} = 25   % 1-by-1 target frame rate, Hz
         iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
+        start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
+        start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time
         viobj       (:,1)                                = []   % 1-by-1 videoinput object
         vsobj       (:,1)                                = []   % 1-by-1 videosource object
     end
@@ -19,15 +20,16 @@ classdef EBCamera < handle
     end
 
     properties (SetAccess=private, GetAccess=public)
-        VideoBuffer     (1,1)   Video   % handle, not deep copy
+        ImagesBuffer     (1,1)   Images   % handle, not deep copy
     end
 
     properties (Access=public, Dependent)
         AcquireFrameRate        % set/get, 1-by-1 double positive, in [1, 100], 25 as default
-        Adapter                 % set/get, 1-by-1 double positive, in [1, 100], 25 as default
+        Adapter                 % set/get, 1-by-1 string, in ["gentl", "winvideo", "ni"]
         BinningHorizontal       % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BinningVertical         % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BitDepth                % ___/get, 1-by-1 double positive integer in [8,12]
+        DateTime                % ___/get, 1-by-1 datetime object, captured absolute time
         DeviceID                % set/get, 1-by-1 double positive integer
         DeviceModelName         % ___/get, 1-by-1 string
         ExposureTime            % set/get, 1-ny-1 double positive integer in [5000, 1000000], unit as us
@@ -68,7 +70,7 @@ classdef EBCamera < handle
             this.iformat = format_;
 
             % initialize video buffer
-            this.VideoBuffer = Video.empty();
+            this.ImagesBuffer = Images.empty();
 
             % initialize capture agent
             this.cap_agent = timer("Name",          "EBCamera_Agent", ...
@@ -97,7 +99,7 @@ classdef EBCamera < handle
             delete(this.cap_agent);
 
             % clear buffer
-            delete(this.VideoBuffer);
+            delete(this.ImagesBuffer);
 
             EBCamera.ManageWarnings("on");
 
@@ -109,19 +111,18 @@ classdef EBCamera < handle
         function value = get.AcquireFrameRate(this)
             if this.IsConnected
                 if ~this.IsRunning
-                    throw(MException("EBCamera:invalidAccess", "Camera is not acquiring, " + ...
-                        "current frame rate is ungetable."))
+                    value = this.fr_target;
                 else
-                    if this.VideoBuffer.IsEmpty
+                    if this.ImagesBuffer.IsEmpty
                         % there is no frame in the queue
-                        value = 1/this.fr_target;     % replace by target frame rate
-                    elseif this.VideoBuffer.Size == 1
-                        frame = this.VideoBuffer.GetLastFrame();    % {image, time}
+                        value = this.fr_target;     % replace by target frame rate
+                    elseif this.ImagesBuffer.Size == 1
+                        frame = this.ImagesBuffer.GetLastFrame();    % {image, time}
                         value = 1/frame{2};
                     else
-                        n = this.VideoBuffer.Size;
-                        frame_last = this.VideoBuffer.GetFrame(n);
-                        frame_prev = this.VideoBuffer.GetFrame(n-1);
+                        n = this.ImagesBuffer.Size;
+                        frame_last = this.ImagesBuffer.GetFrame(n);
+                        frame_prev = this.ImagesBuffer.GetFrame(n-1);
                         value = 1/(frame_last{2} - frame_prev{2});
                     end
                 end
@@ -272,6 +273,11 @@ classdef EBCamera < handle
                     %
                     value = 8;
             end
+        end
+
+        %% DateTime Getter
+        function value = get.DateTime(this)
+            value = this.start_d;
         end
 
         %% DeviceID Getter & Setter
@@ -679,7 +685,7 @@ classdef EBCamera < handle
                 this.vsobj = [];        % garbage collector auto clear
 
                 % clear buffer (in memory)
-                this.VideoBuffer.Clear();
+                this.ImagesBuffer.Clear();
             end
         end
 
@@ -737,7 +743,7 @@ classdef EBCamera < handle
                     this.duration = time;
 
                     % clear buffer for initializing
-                    this.VideoBuffer.Clear();
+                    this.ImagesBuffer.Clear();
 
                     % start timer
                     start(this.cap_agent);
@@ -752,7 +758,7 @@ classdef EBCamera < handle
         function value = GetCurrentFrame(this)
             if this.IsConnected
                 if this.IsRunning
-                    [frame, time] = this.VideoBuffer.GetLastFrame();
+                    [frame, time] = this.ImagesBuffer.GetLastFrame();
                     value = {frame, time};
                 else
                     warning("EBCamera:invalidAccess", "No image is captured " + ...
@@ -770,7 +776,7 @@ classdef EBCamera < handle
             stop(this.cap_agent);
 
             % give up buffer
-            this.VideoBuffer.Clear();
+            this.ImagesBuffer.Clear();
         end
 
         function Stop(this)
@@ -793,7 +799,7 @@ classdef EBCamera < handle
                 % give up last frame
                 stop(src);
             else
-                this.VideoBuffer.AddFrame(img, timestamp);
+                this.ImagesBuffer.AddFrame(img, timestamp);
             end
         end
 
@@ -805,6 +811,7 @@ classdef EBCamera < handle
 
             % set the camera beginning
             this.start_t = tic;
+            this.start_d = datetime("now");
         end
 
         function capture_end(this, src, evt)
