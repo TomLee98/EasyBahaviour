@@ -82,7 +82,7 @@ classdef ImageWriter < handle
                tagstruct.ImageLength = this.info.height;
                tagstruct.XPosition = this.info.xOffset;
                tagstruct.YPosition = this.info.yOffset;
-               tagstruct.ImageDiscription = ...
+               tagstruct.ImageDescription = ...
                    sprintf("BinningHorizontal=%d, BinningVertical=%d, " + ...
                    "FrameRate=%.2f, DeviceModel=%s", this.info.xBinning, ...
                    this.info.yBinning, this.info.frameRate, this.info.deviceModel);
@@ -110,7 +110,7 @@ classdef ImageWriter < handle
                tagstruct.Software = sprintf("MATLAB(R%s):EasyBehaviour:ImageWriter", ...
                    version('-release'));
                [~, hostname] = system('hostname');
-               tagstruct.HostComputer = sprintf("host: %s, os: Windows", hostname);
+               tagstruct.HostComputer = sprintf("host: %s os: Windows", hostname);
 
                % write the first image
                [imageData, time] = this.dataset.GetFrame(1);
@@ -122,7 +122,7 @@ classdef ImageWriter < handle
                % others
                for k = 2:np
                    % read data
-                   [imageData, time] = this.dataset.GetFrame(1);
+                   [imageData, time] = this.dataset.GetFrame(k);
 
                    % create new directory
                    writeDirectory(tifobj);

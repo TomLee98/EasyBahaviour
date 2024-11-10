@@ -402,6 +402,10 @@ classdef EBCamera < handle
             end
         end
 
+        function value = get.IsSuspending(this)
+            value = false;
+        end
+
         %% LineInverter Getter & Setter
         function value = get.LineInverter(this)
             if this.IsConnected

@@ -61,7 +61,7 @@ classdef EBDAQ < handle
 
             % 
             this.adjust_time = 0;
-            this.code_file = string(['.', filesep, 'excode', filesep, 'valve.vcs']);
+            this.code_file = string([fileparts(mfilename("fullpath")), filesep, 'excode', filesep, 'valve.vcs']);
             this.commands = table('Size', [0, 4], ...
                                   'VariableTypes',{'string', 'cell',   'double', 'double'}, ...
                                   'VariableNames',{'code',   'mixing', 'cmd',    'delay'});

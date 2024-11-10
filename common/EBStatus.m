@@ -30,6 +30,9 @@ classdef EBStatus
         KERNEL_RUNNING      (0.0, 1.0, 0.0)     % running
         KERNEL_READY        (1.0, 1.0, 0.0)     % ready before running
         KERNEL_PAUSE        (1.0, 0.0, 0.0)     % pause in running
+        TASK_NONE           (0.0, 0.0, 0.0)
+        TASK_RUNNING        (0.0, 1.0, 0.0)
+        TASK_DONE           (1.0, 1.0, 1.0)
     end
 end
 

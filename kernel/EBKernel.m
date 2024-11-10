@@ -15,7 +15,7 @@ classdef EBKernel < handle
         FramesInfo          % ___/get, 0-by-13 or 1-by-13 table
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
         Scale               % set/get, 1-by-1 struct, with [xRes, yRes, resUnit]
-        Status              % ___/get, 1-by-2 EBStatus, with [DeviceStatus, KernelStatus]
+        Status              % ___/get, 1-by-3 EBStatus, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
     end
@@ -148,7 +148,7 @@ classdef EBKernel < handle
         function value = get.Status(this)
             % empty device
             if ~this.devices.isConfigured
-                value = [EBStatus.DEVICE_UNREADY, EBStatus.KERNEL_UNREADY];
+                value = [EBStatus.DEVICE_UNREADY, EBStatus.KERNEL_UNREADY, EBStatus.TASK_NONE];
                 return;
             end
 
@@ -158,13 +158,18 @@ classdef EBKernel < handle
                     && this.devices{ky}.IsConnected);
             end
             if dev_status
-                if this.devices{"camera"}.IsRunning
-                    value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_RUNNING];
+                if this.devices{"camera"}.IsRunning ...
+                        || this.devices{"camera"}.IsSuspending
+                    value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_RUNNING, EBStatus.TASK_RUNNING];
                 else
-                    value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_READY];
+                    if ~this.devices{"camera"}.ImagesBuffer.IsEmpty
+                        value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_READY, EBStatus.TASK_DONE];
+                    else
+                        value = [EBStatus.DEVICE_READY, EBStatus.KERNEL_READY, EBStatus.TASK_NONE];
+                    end
                 end 
             else
-                value = [EBStatus.DEVICE_UNREADY, EBStatus.KERNEL_UNREADY];
+                value = [EBStatus.DEVICE_UNREADY, EBStatus.KERNEL_UNREADY, EBStatus.TASK_NONE];
             end
         end
 
