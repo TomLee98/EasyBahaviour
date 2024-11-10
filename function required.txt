@@ -1,12 +1,14 @@
 版本号      发行代号           中文代号  
-V1          Panda               熊猫
+V1          Archimedes        阿基米德
   |
   |- V1.0       2024/11/06
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
-  |- V1.1       2024/11/10
-  |     |- [Update] TODO: RAW images export as Tiff file
-  |     |- [Update] TODO: Add 'Video Player' Component 
+  |- V1.1       2024/11/12
+  |     |- [Update] Optimize response speed and experiment time accuracy
+  |     |- [Update] RAW images export as Tiff file (ImageJ checked)
+  |     |- [Update] TODO: Add 'Video Player' Component
+  |     |- [Fix Bugs] TODO: HardwareConfiguration display bug when reloading
   |- V1.2       2024/11
   |     |- [Update] TODO: Add Tracker
   |- V1.3       2024/11
@@ -17,9 +19,12 @@ V1          Panda               熊猫
   |     |- [Update] TODO: Add Scale
   |- V1.4       2024/12
   |     |- [Update] TODO: Add 'Update' function
+  |     |- [Update] TODO: Add 'Multi-Languages' support
+  |- V1.5       2024/12
+  |     |- [Update] TODO: Add manual trigger
 
 
-
+========================== Technology Stack ===========================
 NOTE: real-time tracking 
 [1] detector
     (a) feature detection (SIFT, SURF, HOG, ...)
@@ -34,3 +39,4 @@ NOTE: real-time tracking
     (a) KM algorithm
 
 
+NOTE: parameterization
