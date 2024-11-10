@@ -110,7 +110,7 @@ classdef ImageWriter < handle
                tagstruct.Software = sprintf("MATLAB(R%s):EasyBehaviour:ImageWriter", ...
                    version('-release'));
                [~, hostname] = system('hostname');
-               tagstruct.HostComputer = sprintf("host: %s os: Windows", hostname);
+               tagstruct.HostComputer = sprintf("Windows / %s", hostname);
 
                % write the first image
                [imageData, time] = this.dataset.GetFrame(1);
