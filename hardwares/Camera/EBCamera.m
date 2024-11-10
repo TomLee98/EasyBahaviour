@@ -269,6 +269,8 @@ classdef EBCamera < handle
                     end
                 case "winvideo"
                     value = 8;  % test
+                case "ni"
+                    value = 8;
                 otherwise
                     %
                     value = 8;
@@ -797,7 +799,7 @@ classdef EBCamera < handle
             trigger(this.viobj);        % here is DAQ start time
             img = getdata(this.viobj);
 
-            % input to video buffer
+            % input to images buffer
             timestamp = toc(this.start_t);
             if timestamp > this.duration
                 % give up last frame

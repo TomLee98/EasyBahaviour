@@ -28,7 +28,7 @@ classdef Images < handle
             % initialize data
             switch mode_
                 case "static"
-                    if isempty(images)
+                    if isempty(images_)
                         throw(MException("Video:invalidConstruction", ...
                             "Images can not be empty when instance generation."));
                     end
