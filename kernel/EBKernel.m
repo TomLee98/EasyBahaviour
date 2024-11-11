@@ -4,43 +4,51 @@ classdef EBKernel < handle
     % workflow
     % Note that kernel only provides the basic properties and function for
     % better performance
+    % EBKernel manage two data queue: raw data()
 
     properties (Constant, Hidden)
-        DAQ_DELAY = 0.2
+        DAQ_DELAY = 0.2             % DAQ-Kernel response delay (to camera) 
     end
 
     properties(Access = public, Dependent)
         Devices             % ___/get, 1-by-1 dictionary
+        Feature             % set/get, 1-by-3 EBStatus array, [TrackerStatus, ParameterizerStatus, PopulationStatus]
         Frames              % ___/get, 1-by-1 Images object
         FramesInfo          % ___/get, 0-by-13 or 1-by-13 table
+        IsRunning           % ___/get, 1-by-1 logical, indicate if kernel is running
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
-        Scale               % set/get, 1-by-1 struct, with [xRes, yRes, resUnit]
-        Status              % ___/get, 1-by-3 EBStatus, with [DeviceStatus, KernelStatus, TaskStatus]
+        Option              % set/get, 1-by-1 EBKernelOption, the options for running feature
+        Status              % ___/get, 1-by-3 EBStatus array, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
     end
+
+    properties(Access = ?VideoPlayer, Dependent)
+        CurrentVideoFrame   % ___/get, 1-by-1 VideoFrame object
+    end
     
     properties(Access = private)
-        body        (1,1)
-        devices     (1,1)   dictionary = dictionary()   % devices dictionary, with 
-                                                        % {camera, daq_device, pressure_controller, flowmeter}
-        experiment  (1,1)  
-        scale       (1,1)   struct = struct("xRes",0.1, "yRes",0.1, "resUnit","mm");
-        start_time  (1,1)   uint64  = 0
-        duration    (1,1)   double  = 0
         adjust_t    (1,1)   double  = 0                 % adjust time because of kernel using
+        body        (1,1)                               % container/caller, who ask kernel for update info
+        devices     (1,1)   dictionary = dictionary()   % devices dictionary
+        duration    (1,1)   double  = 0                 % task duration
+        feature     (1,3)   EBStatus                    % task feature, function configuration
+        options     (1,1)   EBKernelOptions             % task options
+        paradigm    (1,1)   EBParadigm                  % parafigm object, experiment pipeline defination
+        start_time  (1,1)   uint64  = 0                 % kernel(camera) absolute start time from tic
+        videos      (1,1)   mQueue  = mQueue()          % video frame queue, with VideoFrame object as item   
     end
     
     methods
-        function this = EBKernel(ctnr, eprm)
+        function this = EBKernel(ctnr, pdgm)
             %EBKERNEL A Constructor
             arguments
                 ctnr    (1,1)   EasyBehaviour                   % caller
-                eprm    (1,1)                   =   0           % communication defination
+                pdgm    (1,1)   EBParadigm     = EBParadigm()   % paradigm defination
             end
 
             this.body = ctnr;
-            this.experiment = eprm;
+            this.paradigm = pdgm;
         end
 
         function delete(this)
@@ -59,16 +67,40 @@ classdef EBKernel < handle
             clear("this");
         end
 
+        %% CurrentVideoFrame Getter
+        function value = get.CurrentVideoFrame(this)
+            value = this.videos.tail();
+        end
+
         %% Devices Getter
         function value = get.Devices(this)
             value = this.devices;
+        end
+
+        %% Feature Getter & Setter
+        function value = get.Feature(this)
+            value = this.feature;
+        end
+
+        function set.Feature(this, value)
+            arguments
+                this
+                value   (1,3)   EBStatus
+            end
+
+            if this.IsRunning
+                throw(MException("EBKernel:invalidAccess", ...
+                    "Running kernel feature is unsetable."));
+            else
+                this.feature = value;
+            end
         end
 
         %% Frames Getter
         function value = get.Frames(this)
             if this.devices.isConfigured ...
                     && this.devices{"camera"}.IsConnected
-                value = this.devices{"camera"}.ImagesBuffer;
+                value = this.devices{"camera"}.ImagesBuffer;    % just read buffer
             else
                 value = Images.empty();
             end
@@ -92,13 +124,13 @@ classdef EBKernel < handle
                 value.xBinning = this.devices{"camera"}.BinningHorizontal;
 
                 value.yBinning = this.devices{"camera"}.BinningVertical;
-                value.xResolution = this.scale.xRes;
-                value.yResolution = this.scale.yRes;
+                value.xResolution = this.options.XResolution;
+                value.yResolution = this.options.YResolution;
                 value.frameRate = this.devices{"camera"}.AcquireFrameRate;
                 value.bitDepth = this.devices{"camera"}.BitDepth;
 
                 value.deviceModel = this.devices{"camera"}.DeviceModelName;
-                value.resolutionUnit = this.scale.resUnit;
+                value.resolutionUnit = this.options.ResolutionUnit;
                 value.dateTime = this.devices{"camera"}.DateTime;
             else
                 value = table('Size', [0, 13], ...
@@ -109,6 +141,14 @@ classdef EBKernel < handle
                     'deviceModel', 'resolutionUnit','dateTime'});
             end
         end
+
+        %% IsRunning Getter
+            function value = get.IsRunning(this)
+                value = (this.devices.isConfigured ...
+                    && isKey(this.devices, "camera") ...
+                    && this.devices{"camera"}.IsConnected ...
+                    && this.devices{"camera"}.IsRunning);
+            end
 
         %% LeftTime Getter
         function value = get.LeftTime(this)
@@ -125,22 +165,22 @@ classdef EBKernel < handle
             end
         end
 
-        %% Scale Getter & Setter
-        function value = get.Scale(this)
-            value = this.scale;
+        %% Option Getter & Setter
+        function value = get.Option(this)
+            value = this.options;
         end
 
-        function set.Scale(this, value)
+        function set.Option(this, value)
             arguments
                 this
-                value   (1,1)   struct
+                value   (1,1)   EBKernelOptions
             end
 
-            if ~isempty(setdiff(string(fieldnames(value)), ["xRes","yRes","resUnit"]))
-                throw(MException("EBKernel:invalidScale", "Scale must be struct scalar with " + ...
-                    "xRes, yRes and resUnit."));
+            if this.IsRunning
+                throw(MException("EBKernel:invalidAccess", ...
+                        "Running kernel option is unsetable"));
             else
-                this.scale = value;
+                this.options = value;
             end
         end
 
@@ -200,13 +240,9 @@ classdef EBKernel < handle
                 dev     (1,1)   dictionary
             end
 
-            if this.devices.isConfigured
-                if isKey(this.devices, "camera") ...
-                        && this.devices{"camera"}.IsConnected ...
-                        && this.devices{"camera"}.IsRunning
-                    throw(MException("EBKernel:invalidAccess", ...
+            if this.IsRunning
+                throw(MException("EBKernel:invalidAccess", ...
                         "EBKernel does not support hot swap."));
-                end
             end
             
             % replace devices
@@ -220,25 +256,35 @@ classdef EBKernel < handle
             end
         end
 
-        function update_experiment(this, eprm)
+        function update_paradigm(this, pdgm)
             arguments
                 this
-                eprm     (1,1)   dictionary
+                pdgm     (1,1)   EBParadigm
             end
 
-            if isKey(this.devices, "camera") ...
-                    && this.devices{"camera"}.IsConnected ...
-                    && this.devices{"camera"}.IsRunning
+            if this.IsRunning
                 throw(MException("EBKernel:invalidAccess", ...
-                    "EBKernel does not support hot experiment modifying."));
+                    "EBKernel does not support hot modifying."));
             else
                 % replace experiment
-                this.experiment = eprm;
+                this.paradigm = pdgm;
             end
         end
 
+        % run with kernal options
         function run(this)
-            %TODO: pipeline uses experiment defination
+            %% 1. configure running pipeline
+
+            % 2. enable hardware process
+
+            % 3. start calculate (backend parallel)
+
+
+
+
+
+
+            %TODO: pipeline uses paradigm defination
 
             % live
             figure("Name", "Video Player - Waiting)");
@@ -284,6 +330,10 @@ classdef EBKernel < handle
         function recover(this)
             
         end
+    end
+
+    methods(Access = private)
+
     end
 end
 

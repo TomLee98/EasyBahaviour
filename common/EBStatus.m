@@ -24,18 +24,24 @@ classdef EBStatus
     end
 
     enumeration
-        DEVICE_READY        (0.0, 1.0, 0.0)     % device is ready
-        DEVICE_UNREADY      (0.8, 0.8, 0.8)     % 
-        KERNEL_UNREADY      (0.8, 0.8, 0.8)     % kernel
-        KERNEL_RUNNING      (0.0, 1.0, 0.0)     % running
-        KERNEL_READY        (1.0, 1.0, 0.0)     % ready before running
-        KERNEL_PAUSE        (1.0, 0.0, 0.0)     % pause in running
-        TASK_NONE           (0.0, 0.0, 0.0)
-        TASK_RUNNING        (0.0, 1.0, 0.0)
-        TASK_DONE           (1.0, 1.0, 1.0)
-        MODE_RECORDING      (1.0, 0.0, 0.0)     % system recording
-        MODE_READING        (0.0, 1.0, 0.0)     % system reading something
-        MODE_WRITTING       (0.0, 0.0, 1.0)     % system writting something
+        DEVICE_READY            (0.0, 1.0, 0.0)     % device is ready
+        DEVICE_UNREADY          (0.8, 0.8, 0.8)     % 
+        KERNEL_UNREADY          (0.8, 0.8, 0.8)     % kernel
+        KERNEL_RUNNING          (0.0, 1.0, 0.0)     % running
+        KERNEL_READY            (1.0, 1.0, 0.0)     % ready before running
+        KERNEL_PAUSE            (1.0, 0.0, 0.0)     % pause in running
+        TASK_NONE               (0.0, 0.0, 0.0)
+        TASK_RUNNING            (0.0, 1.0, 0.0)
+        TASK_DONE               (1.0, 1.0, 1.0)
+        MODE_RECORDING          (1.0, 0.0, 0.0)     % system recording
+        MODE_READING            (0.0, 1.0, 0.0)     % system reading something
+        MODE_WRITTING           (0.0, 0.0, 1.0)     % system writting something
+        TRACKER_DISABLE         (0.0, 0.0, 0.0)
+        TRACKER_ENABLE          (1.0, 1.0, 1.0)
+        PARAMETERIZER_DISABLE   (0.0, 0.0, 0.0)
+        PARAMETERIZER_ENABLE    (1.0, 1.0, 1.0)
+        POPULATION_DISABLE      (0.0, 0.0, 0.0)
+        POPULATION_ENABLE       (1.0, 1.0, 1.0)
     end
 end
 

@@ -155,8 +155,14 @@ while ptr <= numel(src)
     cmd = src(ptr);
     if cmd.contains(kwd_loop)
         cmd = cmd.extractBetween("<",">").split(":");
-        edr = [edr; str2double(cmd(2))]; %#ok<AGROW>
-        ptr = ptr + 1;  % move pointer
+        nloop = str2double(cmd(2));
+        if isPositiveIntegerValuedNumeric(nloop)
+            edr = [edr; nloop]; %#ok<AGROW>
+            ptr = ptr + 1;  % move pointer
+        else
+            throw(MException("vcsl:invalidLoopNumber", ...
+                "Loop number must be finite positive integer."));
+        end
     elseif isequal(cmd.erase(" "), "{")
         % push ptr into  syntax stack
         lsptr = [lsptr; ptr]; %#ok<AGROW>

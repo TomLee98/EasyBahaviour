@@ -4,24 +4,53 @@ V1          Archimedes        阿基米德
   |- V1.0       2024/11/06
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
+  |     |- [Update] Basic framework: extension hardware-software system
   |- V1.1       2024/11/12
   |     |- [Update] Optimize response speed and experiment time accuracy
   |     |- [Update] RAW images export as Tiff file (ImageJ checked)
   |     |- [Update] TODO: Add 'Video Player' Component
-  |     |- [Fix Bugs] TODO: HardwareConfiguration display bug when reloading
+  |     |- [Update] more robust extension hardware-software system
+  |     |- [Fix Bugs] HardwareConfiguration display bug when reloading
+  |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 
+  |     |- [Fix Bugs] TODO: Camera ROI/Binning Setting when connected
   |- V1.2       2024/11
-  |     |- [Update] TODO: Add Tracker
+  |     |- [Update] TODO: Add 'Tracker'
+  |     |- [Fix Bugs]
   |- V1.3       2024/11
-  |     |- [Update] TODO: Add Parameterization
-  |- V1.3       2024/11/
+  |     |- [Update] TODO: Add 'Parameterization'
+  |     |- [Update] TODO: Add 'Export Behaviour Parameters'
+  |     |- [Fix Bugs]
+  |- V1.3       2024/12/
   |     |- [Update] TODO: Preference Options support: <appearence>
   |     |- [Update] TODO: Add Beightness/Contrast
   |     |- [Update] TODO: Add Scale
+  |     |- [Fix Bugs]
   |- V1.4       2024/12
   |     |- [Update] TODO: Add 'Update' function
   |     |- [Update] TODO: Add 'Multi-Languages' support
+  |     |- [Fix Bugs]
   |- V1.5       2024/12
   |     |- [Update] TODO: Add manual trigger
+  |     |- [Update] TODO: Add palette function
+  |     |- [Fix Bugs]
+  |- V1.6       2024/12
+  |     |- [Update] TODOl full function video player support
+  |     |- [Update] TODO: Add 'Export Video'
+  |     |- [Fix Bugs]
+  #     #
+
+
+V2          Tesla           特斯拉
+  |
+  |- V2.0       2025/01/
+  |     |- [Update] TODO: Add 'paradigm designer & manager'
+  |     |- [Update] TODO: Add 'New Paradigm'
+  |     |- [Update] TODO: Add 'Document'
+  |     |- [Fix Bugs]
+  |- V2.1       2024/01/
+  |     |- [Update] TODO: Add 'Multi-Languages Document' support
+  |     |- [Update]
+  |     |- [Fix Bugs]
 
 
 ========================== Technology Stack ===========================
