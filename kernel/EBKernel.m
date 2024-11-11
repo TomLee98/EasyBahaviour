@@ -176,7 +176,7 @@ classdef EBKernel < handle
         %% Tasks Getter
         function value = get.Tasks(this)
             % tasks as table, with [code, mixing]
-            if isKey(this.devices, "daq_device")
+            if this.devices.isConfigured && isKey(this.devices, "daq_device")
                 value = this.devices{"daq_device"}.TaskTable;
             else
                 value = [];

@@ -33,6 +33,9 @@ classdef EBStatus
         TASK_NONE           (0.0, 0.0, 0.0)
         TASK_RUNNING        (0.0, 1.0, 0.0)
         TASK_DONE           (1.0, 1.0, 1.0)
+        MODE_RECORDING      (1.0, 0.0, 0.0)     % system recording
+        MODE_READING        (0.0, 1.0, 0.0)     % system reading something
+        MODE_WRITTING       (0.0, 0.0, 1.0)     % system writting something
     end
 end
 

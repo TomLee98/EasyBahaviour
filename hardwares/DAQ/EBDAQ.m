@@ -30,6 +30,7 @@ classdef EBDAQ < handle
         port_n          (1,1)   double              % DAQ device port number
         start_t         (1,1)   uint64              % valves running start time, get by tic
         vport           (:,2)   double              % [port, line], indicate valves channel
+        vport_labels    (:,1)   string              % valve labels, corresponding with vport
         vport_mapping   (1,1)   dictionary          % the valves port mapping, <string> -> <cell>, indicate a transformation
         vendor          (1,1)   string              % device vendor
     end
@@ -44,6 +45,7 @@ classdef EBDAQ < handle
         IsRunning           % ___/get, 1-by-1 logical
         PortNumber          % set/get, 1-by-1 double, positive integer
         TaskTable           % ___/get, n-by-2 table
+        ValvesLabel         % ___/get, n-by-1 string
         ValvesPort          % set/get, n-by-2 double, nonnegtive integer
         ValvesPortMapping   % ___/get, 1-by-1 dictionary
         Vendor              % set/get, 1-by-1 string
@@ -73,6 +75,7 @@ classdef EBDAQ < handle
             this.port_n = nan;
             this.start_t = 0;
             this.vport = [nan, nan];
+            this.vport_labels = "";
             this.vport_mapping = dictionary([], []);
             this.vendor = "";
 
@@ -259,7 +262,12 @@ classdef EBDAQ < handle
             end
         end
 
-        %% PortMapping Getter & Setter
+        %% ValvesLabel Getter
+        function value = get.ValvesLabel(this)
+            value = this.vport_labels;
+        end
+
+        %% PortMapping Getter
         function value = get.ValvesPortMapping(this)
             value = this.vport_mapping;
         end
@@ -362,6 +370,8 @@ classdef EBDAQ < handle
                 throw(MException("EBDAQ:invalidKeys", "The number of valves " + ...
                     "and wiring ports does not match."));
             else
+                this.vport_labels = valves;
+
                 % clear vport_mapping
                 this.vport_mapping = dictionary();
 
