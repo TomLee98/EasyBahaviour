@@ -3,25 +3,29 @@ classdef EBKernelOptions < handle
     
     properties(Access = public, Dependent)
         %% Scale Properties
+        ResolutionUnit              % set/get, 1-by-1 string, real world length unit, in [um, mm, cm, inch]
+        ScaleOptions                % set/get, 1-by-1 struct
         XResolution                 % set/get, 1-by-1 positive double, resolution at x direction
         YResolution                 % set/get, 1-by-1 positive double, resolution at y direction
-        ResolutionUnit              % set/get, 1-by-1 string, real world length unit, in [um, mm, cm, inch]
 
         %% Tracker Properties
         DetectFeature               % set/get, 
         FeatureMixModel             % set/get, 
         FeatureSampling             % set/get,
         SemanticsClassifier         % set/get,
+        TrackerOptions              % set/get,
         MotionPredictor             % set/get,
         ObjectMatcher               % set/get, 
 
         %% Parameterizer Properties
         BackboneCurvatureOperator   % set/get,
         CenterAccelarationOperator  % set/get,
-        CenterVelocityOperator      % set/get
+        CenterVelocityOperator      % set/get,
+        ParameterizerOptions        % set/get,
 
         %% Population Properties
         %
+        PopulationOptions           % set/get,
     end
 
     properties(Access=private, Hidden)

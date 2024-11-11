@@ -9,6 +9,7 @@ V1          Archimedes        阿基米德
   |     |- [Update] Optimize response speed and experiment time accuracy
   |     |- [Update] RAW images export as Tiff file (ImageJ checked)
   |     |- [Update] TODO: Add 'Video Player' Component
+  |     |- [Update] TODO: EBVideo fully supported
   |     |- [Update] more robust extension hardware-software system
   |     |- [Fix Bugs] HardwareConfiguration display bug when reloading
   |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 

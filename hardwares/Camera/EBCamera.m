@@ -20,7 +20,7 @@ classdef EBCamera < handle
     end
 
     properties (SetAccess=private, GetAccess=public)
-        ImagesBuffer     (1,1)   Images   % handle, not deep copy
+        ImagesBuffer     (1,1)   EBImages   % handle, not deep copy
     end
 
     properties (Access=public, Dependent)
@@ -70,7 +70,7 @@ classdef EBCamera < handle
             this.iformat = format_;
 
             % initialize video buffer
-            this.ImagesBuffer = Images.empty();
+            this.ImagesBuffer = EBImages.empty();
 
             % initialize capture agent
             this.cap_agent = timer("Name",          "EBCamera_Agent", ...

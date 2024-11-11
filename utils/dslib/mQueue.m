@@ -72,6 +72,11 @@ classdef mQueue < matlab.mixin.Copyable
 
     methods(Access = public, Hidden)
         function value = get(this, index)
+            arguments
+                this
+                index   (1, 1)  double  {mustBePositive, mustBeInteger}
+            end
+            
             if index <= this.length
                 value = this.data_v{index};
             else

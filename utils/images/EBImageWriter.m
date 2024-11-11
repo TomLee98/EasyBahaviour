@@ -1,4 +1,4 @@
-classdef ImageWriter < handle
+classdef EBImageWriter < handle
     %IMAGEWRITER This is image writer class, which support write files as
     %defined format
 
@@ -16,10 +16,10 @@ classdef ImageWriter < handle
     end
     
     methods
-        function this = ImageWriter(dataset, info)
+        function this = EBImageWriter(dataset, info)
             %IMAGEWRITER 
             arguments
-                dataset     (1,1)   Images
+                dataset     (1,1)   EBImages
                 info        (1,13)  table
             end
 

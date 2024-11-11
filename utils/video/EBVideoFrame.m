@@ -1,11 +1,11 @@
-classdef VideoFrame
+classdef EBVideoFrame
     %VIDEOFRAME This is video frame object, with basic properties could be
     % illstruated on VideoPlayer
     % generate as value object
 
     properties(GetAccess = public, Dependent)
-        DetectBoxes         % ___/get, k-by-5 double, [OffsetX, OffsetY, Width, Height, Angle]
-        GeometricCenters    % ___/get, k-by-2 double, [PositionX, PositionY]
+        DetectBoxes         % ___/get, k-by-6 double, [Identity, OffsetX, OffsetY, Width, Height, Angle]
+        GeometricCenters    % ___/get, k-by-3 double, [Identity, PositionX, PositionY]
         ImageData           % ___/get, m-by-n uint8/uint16 image data
         MetaData            % ___/get, 1-by-1 string, command code, such as "A&B"
         Scale               % ___/get, 1-by-1 struct, [xRes, yRes, resUnit], resolution for pixel size
@@ -14,8 +14,8 @@ classdef VideoFrame
 
     
     properties(SetAccess = immutable, GetAccess = private)
-        detect_boxes        (:,5)   double  % [OffsetX, OffsetY, Width, Height, Angle]
-        geometric_centers   (:,2)   double  % [PositionX, PositionY]
+        detect_boxes        (:,6)   double  % [Identity, OffsetX, OffsetY, Width, Height, Angle]
+        geometric_centers   (:,3)   double  % [Identity, PositionX, PositionY]
         image_data          (:,:)           % image data
         meta_data           (1,1)   string  % command code, such as "A&B"
         scale               (1,1)   struct  % field: [xRes, yRes, resUnit]
@@ -23,14 +23,14 @@ classdef VideoFrame
     end
     
     methods
-        function this = VideoFrame(image_, time_, meta_, scale_, boxes_, pos_)
+        function this = EBVideoFrame(image_, time_, meta_, scale_, boxes_, pos_)
             arguments
-                image_  (:,:)           {mustBeNonnegative}
-                time_   (1,1)   double  {mustBeNonnegative}
-                meta_   (1,1)   string
-                scale_  (1,1)   struct
-                boxes_  (:,5)   double  {mustBeNonnegative}
-                pos_    (:,2)   double  {mustBeNonnegative}
+                image_  (:,:)           = []
+                time_   (1,1)   double  = nan
+                meta_   (1,1)   string  = ""
+                scale_  (1,1)   struct  = struct("xRes",nan, "yRes",nan, "resUnit",[])
+                boxes_  (:,6)   double  = double.empty(0, 6)
+                pos_    (:,3)   double  = double.empty(0, 3)
             end
 
             % immutable properties

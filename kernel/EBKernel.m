@@ -11,6 +11,7 @@ classdef EBKernel < handle
     end
 
     properties(Access = public, Dependent)
+        CurrentVideoFrame   % ___/get, 1-by-1 VideoFrame object
         Devices             % ___/get, 1-by-1 dictionary
         Feature             % set/get, 1-by-3 EBStatus array, [TrackerStatus, ParameterizerStatus, PopulationStatus]
         Frames              % ___/get, 1-by-1 Images object
@@ -21,29 +22,29 @@ classdef EBKernel < handle
         Status              % ___/get, 1-by-3 EBStatus array, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
-    end
-
-    properties(Access = ?VideoPlayer, Dependent)
-        CurrentVideoFrame   % ___/get, 1-by-1 VideoFrame object
+        Video               % ___/get, 1-by-1 mQueue with VideoFrame object
     end
     
     properties(Access = private)
-        adjust_t    (1,1)   double  = 0                 % adjust time because of kernel using
-        body        (1,1)                               % container/caller, who ask kernel for update info
-        devices     (1,1)   dictionary = dictionary()   % devices dictionary
-        duration    (1,1)   double  = 0                 % task duration
-        feature     (1,3)   EBStatus                    % task feature, function configuration
-        options     (1,1)   EBKernelOptions             % task options
-        paradigm    (1,1)   EBParadigm                  % parafigm object, experiment pipeline defination
-        start_time  (1,1)   uint64  = 0                 % kernel(camera) absolute start time from tic
-        videos      (1,1)   mQueue  = mQueue()          % video frame queue, with VideoFrame object as item   
+        adjust_t        (1,1)   double              = 0             % adjust time because of kernel using
+        body            (1,1)                                       % container/caller, who ask kernel for update info
+        devices         (1,1)   dictionary          = dictionary()  % devices dictionary
+        duration        (1,1)   double              = 0             % task duration
+        feature         (1,3)   EBStatus                            % task feature, function configuration
+        options         (1,1)   EBKernelOptions                     % task options
+        paradigm        (1,1)   EBParadigm                          % EBParadigm object, experiment pipeline defination
+        parameterizer   (1,1)   Parameterizer                       % Parameterizer object, motion parameterize
+        pfanalyzer      (1,1)   PopulationAnalyzer                  % PopulationAnalyzer object, analyze population features
+        start_time      (1,1)   uint64              = 0             % kernel(camera) absolute start time from tic
+        tracker         (1,1)   Tracker                             % Tracker object, tracking object motion
+        videos          (1,1)   mQueue              = mQueue()      % video frame queue, with VideoFrame object as item   
     end
     
     methods
         function this = EBKernel(ctnr, pdgm)
             %EBKERNEL A Constructor
             arguments
-                ctnr    (1,1)   EasyBehaviour                   % caller
+                ctnr    (1,1)                  = 0              % caller
                 pdgm    (1,1)   EBParadigm     = EBParadigm()   % paradigm defination
             end
 
@@ -61,8 +62,8 @@ classdef EBKernel < handle
                 end
             end
 
-            % experiment clean
-            %
+            % paradigm clean
+            % ~
 
             clear("this");
         end
@@ -102,7 +103,7 @@ classdef EBKernel < handle
                     && this.devices{"camera"}.IsConnected
                 value = this.devices{"camera"}.ImagesBuffer;    % just read buffer
             else
-                value = Images.empty();
+                value = EBImages.empty();
             end
         end
 
@@ -231,6 +232,11 @@ classdef EBKernel < handle
                 value = this.duration;
             end
         end
+
+        %% Video Getter
+        function value = get.Video(this)
+            value = this.videos;
+        end
     end
 
     methods(Access = ?EasyBehaviour)
@@ -273,7 +279,10 @@ classdef EBKernel < handle
 
         % run with kernal options
         function run(this)
-            %% Configure running pipeline
+            %% Configure analysis tools
+            this.tracker = Tracker(this.options.TrackerOptions);
+            this.parameterizer = Parameterizer(this.options.ParameterizerOptions);
+            this.pfanalyzer = PopulationAnalyzer(this.options.PopulationOptions);
 
             %% Enable hardware process
 
@@ -287,58 +296,54 @@ classdef EBKernel < handle
             % start time align to camera
             this.start_time = this.devices{"camera"}.StartTime;
 
-            %% Start calculation (backend parallel)
+            %% Start calculation (backend parallel in each sub function)
+            scale = this.options.ScaleOptions;
+            boxes_tot = {double.empty(0, 6), double.empty(0, 6)};
+            gcs_tot = {};
             while this.devices{"camera"}.IsRunning
                 % require current frame
                 frame = this.devices{"camera"}.GetCurrentFrame();
+                % require current task
+                task = this.devices{"daq_device"}.GetCurrentTask();
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
-                    % track followed
+                    % track followed, parallel
+                    [boxes, gcs] = this.tracker.Track(boxes_tot{end-1}, boxes_tot{end}, frame);
+                    
+                    % combine detect box 
+                    boxes_tot = [boxes_tot, {boxes}]; %#ok<AGROW>
+                    gcs_tot = [gcs_tot, {gcs}]; %#ok<AGROW>
                     
                     if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
-                        % parameterize followed
+                        % parameterize followed, parallel
 
                         if this.feature(3) == EBStatus.POPULATION_ENABLE
-                            % populaton analysis followed
+                            % populaton analysis followed, parallel
 
                         end
                     end
+
+                    frame_tracked_n = frame_tracked_n + 1;
+                else
+                    % tracking disabled
+                    boxes_tot = [boxes_tot, {double.empty(0, 6)}]; %#ok<AGROW>
+                    gcs_tot = [gcs_tot, {double.empty(0, 3)}]; %#ok<AGROW>
                 end
+
+                % construct VideoFrame
+                vf = EBVideoFrame(frame{1}, frame{2}, task.code, scale, ...
+                    boxes_tot{end}, gcs_tot{end});
+
+                % save video frames
+                this.videos.enqueue(vf);
             end
 
-
-
-
-
-            %TODO: pipeline uses paradigm defination
-
-            % live
-            figure("Name", "Video Player - Waiting)");
-            hImage = image(zeros(this.devices{"camera"}.ROIHeight, ...
-                            this.devices{"camera"}.ROIWidth));
-            colormap(gca, "gray");
-            drawnow
+            %% Post process variables
             
-            %% turn on DAQ device (first of all)
-            this.devices{"daq_device"}.Run();   % waitfor camera switching
-
-            %% turn on camera and acquire right now
-            this.devices{"camera"}.Acquire(this.duration + this.DAQ_DELAY);
-
-            pause(0.2);
-            set(gcf, "Name", "Video Player - Running");
-            
-            this.start_time = this.devices{"camera"}.StartTime;
-
-            while this.devices{"camera"}.IsRunning
-                frame = this.devices{"camera"}.GetCurrentFrame();
-                hImage.CData = frame{1};
-                pause(0.05);
-            end
-
-            close(gcf);
-            this.start_time = 0;
-
+            % free
+            delete(this.tracker);
+            delete(this.parameterizer);
+            delete(this.pfanalyzer);
         end
 
         function stop(this)
