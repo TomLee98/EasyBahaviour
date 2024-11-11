@@ -410,12 +410,14 @@ classdef EBDAQ < handle
             start(this.cam_listener);    
         end
 
-        function value = GetCurrentValves(this)
+        function value = GetCurrentTask(this)
             if this.IsConnected
                 if this.cmd_pointer > 0
-                    value = this.commands.cmd(this.cmd_pointer, :);
+                    value = this.commands(this.cmd_pointer, :); % 1-by-4 table
                 else
-                    value = [];
+                    value = table('Size', [0, 4], ...
+                                  'VariableTypes',{'string', 'cell',   'double', 'double'}, ...
+                                  'VariableNames',{'code',   'mixing', 'cmd',    'delay'});
                 end
             else
                 throw(MException("EBDAQ:invalidAccess", "DAQ Controller is " + ...

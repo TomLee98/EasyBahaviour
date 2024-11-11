@@ -764,8 +764,8 @@ classdef EBCamera < handle
         function value = GetCurrentFrame(this)
             if this.IsConnected
                 if this.IsRunning
-                    [frame, time] = this.ImagesBuffer.GetLastFrame();
-                    value = {frame, time};
+                    [image, time] = this.ImagesBuffer.GetLastFrame();
+                    value = {image, time};
                 else
                     warning("EBCamera:invalidAccess", "No image is captured " + ...
                         "because EBCamera is not running.");

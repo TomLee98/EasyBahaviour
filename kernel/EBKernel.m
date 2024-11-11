@@ -273,12 +273,38 @@ classdef EBKernel < handle
 
         % run with kernal options
         function run(this)
-            %% 1. configure running pipeline
+            %% Configure running pipeline
 
-            % 2. enable hardware process
+            %% Enable hardware process
 
-            % 3. start calculate (backend parallel)
+            % turn on DAQ device (first of all)
+            this.devices{"daq_device"}.Run();   % waitfor camera switching
 
+            % turn on camera and acquire right now
+            this.devices{"camera"}.Acquire(this.duration + this.DAQ_DELAY);
+            pause(this.DAQ_DELAY);  % waitfor DAQ synchronous
+            
+            % start time align to camera
+            this.start_time = this.devices{"camera"}.StartTime;
+
+            %% Start calculation (backend parallel)
+            while this.devices{"camera"}.IsRunning
+                % require current frame
+                frame = this.devices{"camera"}.GetCurrentFrame();
+
+                if this.feature(1) == EBStatus.TRACKER_ENABLE
+                    % track followed
+                    
+                    if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
+                        % parameterize followed
+
+                        if this.feature(3) == EBStatus.POPULATION_ENABLE
+                            % populaton analysis followed
+
+                        end
+                    end
+                end
+            end
 
 
 
