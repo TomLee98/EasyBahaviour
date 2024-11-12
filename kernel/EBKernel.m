@@ -22,22 +22,22 @@ classdef EBKernel < handle
         Status              % ___/get, 1-by-3 EBStatus array, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
-        Video               % ___/get, 1-by-1 mQueue with VideoFrame object
+        Video               % ___/get, 1-by-1 EBVideo object
     end
     
     properties(Access = private)
-        adjust_t        (1,1)   double              = 0             % adjust time because of kernel using
-        body            (1,1)                                       % container/caller, who ask kernel for update info
-        devices         (1,1)   dictionary          = dictionary()  % devices dictionary
-        duration        (1,1)   double              = 0             % task duration
-        feature         (1,3)   EBStatus                            % task feature, function configuration
-        options         (1,1)   EBKernelOptions                     % task options
-        paradigm        (1,1)   EBParadigm                          % EBParadigm object, experiment pipeline defination
-        parameterizer   (1,1)   Parameterizer                       % Parameterizer object, motion parameterize
-        pfanalyzer      (1,1)   PopulationAnalyzer                  % PopulationAnalyzer object, analyze population features
-        start_time      (1,1)   uint64              = 0             % kernel(camera) absolute start time from tic
-        tracker         (1,1)   Tracker                             % Tracker object, tracking object motion
-        videos          (1,1)   mQueue              = mQueue()      % video frame queue, with VideoFrame object as item   
+        adjust_t        (1,1)   double              = 0                 % adjust time because of kernel using
+        body            (1,1)                                           % container/caller, who ask kernel for update info
+        devices         (1,1)   dictionary          = dictionary()      % devices dictionary
+        duration        (1,1)   double              = 0                 % task duration
+        feature         (1,3)   EBStatus                                % task feature, function configuration
+        options         (1,1)   EBKernelOptions                         % task options
+        paradigm        (1,1)   EBParadigm                              % EBParadigm object, experiment pipeline defination
+        parameterizer   (1,1)   Parameterizer                           % Parameterizer object, motion parameterize
+        pfanalyzer      (1,1)   PopulationAnalyzer                      % PopulationAnalyzer object, analyze population features
+        start_time      (1,1)   uint64              = 0                 % kernel(camera) absolute start time from tic
+        tracker         (1,1)   Tracker                                 % Tracker object, tracking object motion
+        videos          (1,1)   EBVideo             = EBVideo.empty()   % video frame queue, with VideoFrame object as item   
     end
     
     methods
@@ -70,7 +70,7 @@ classdef EBKernel < handle
 
         %% CurrentVideoFrame Getter
         function value = get.CurrentVideoFrame(this)
-            value = this.videos.tail();
+            value = this.videos.GetLastFrame();
         end
 
         %% Devices Getter
@@ -322,8 +322,6 @@ classdef EBKernel < handle
 
                         end
                     end
-
-                    frame_tracked_n = frame_tracked_n + 1;
                 else
                     % tracking disabled
                     boxes_tot = [boxes_tot, {double.empty(0, 6)}]; %#ok<AGROW>
@@ -335,7 +333,7 @@ classdef EBKernel < handle
                     boxes_tot{end}, gcs_tot{end});
 
                 % save video frames
-                this.videos.enqueue(vf);
+                this.videos.AddFrame(vf);
             end
 
             %% Post process variables

@@ -25,10 +25,10 @@ classdef EBVideoFrame
     methods
         function this = EBVideoFrame(image_, time_, meta_, scale_, boxes_, pos_)
             arguments
-                image_  (:,:)           = []
-                time_   (1,1)   double  = nan
+                image_  (:,:)         
+                time_   (1,1)   double
                 meta_   (1,1)   string  = ""
-                scale_  (1,1)   struct  = struct("xRes",nan, "yRes",nan, "resUnit",[])
+                scale_  (1,1)   struct  = struct("xRes",1, "yRes",1, "resUnit","mm")
                 boxes_  (:,6)   double  = double.empty(0, 6)
                 pos_    (:,3)   double  = double.empty(0, 3)
             end
@@ -70,6 +70,12 @@ classdef EBVideoFrame
         %% TimeStamp Getter
         function value = get.TimeStamp(this)
             value = this.time_stamp;
+        end
+    end
+
+    methods(Access = public)
+        function value = isempty(this)
+            value = isempty(this.image_data);
         end
     end
 end
