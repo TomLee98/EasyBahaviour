@@ -67,7 +67,9 @@ classdef EBKernel < handle
             % paradigm clean
             % ~
 
-            clear("this");
+
+            % variables clean up
+            this.videos.delete();
         end
 
         %% CurrentVideoFrame Getter

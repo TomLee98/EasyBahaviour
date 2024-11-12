@@ -47,13 +47,51 @@ classdef mStack < matlab.mixin.Copyable
             end
         end
 
-        function len = size(this)
+        function len = numel(this)
             len = this.length;
         end
 
         function delete(this)
+            % deconstructor
+            this.cleanup();
+
+            % ~
+            clear("this");
+        end
+    end
+
+    methods(Access = public, Hidden)
+        function value = get(this, index)
+            arguments
+                this
+                index   (1, 1)  double  {mustBePositive, mustBeInteger}
+            end
+
+            if index <= this.length
+                value = this.data_v{index};
+            else
+                throw(MException("mStack:OutOfBoundary", "Index out of array " + ...
+                    "boundary."));
+            end
+        end
+    end
+
+    methods(Access = private, Hidden)
+        function cleanup(this)
+            % call object delete for memory free
+            cellfun(@free, this.data_v);
+
+            % clear built-in value classes
             this.data_v = {};
+
             this.length = 0;
+
+            function free(x)
+                if isobject(x) && isvalid(x) && ...
+                        ismember("delete", string(methods(x)))
+                    x.delete();     % call 'delete'
+                end
+            end
         end
     end
 

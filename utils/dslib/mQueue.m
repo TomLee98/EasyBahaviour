@@ -59,12 +59,10 @@ classdef mQueue < matlab.mixin.Copyable
             len = this.length;
         end
 
-        function clear(this)
-            this.data_v = {};   % drop, omit handle->deep clear
-            this.length = 0;
-        end
+        function delete(this)
+            % deconstructor
+            this.cleanup();
 
-        function delete(this) %#ok<INUSD>
             % ~
             clear("this");
         end
@@ -82,6 +80,25 @@ classdef mQueue < matlab.mixin.Copyable
             else
                 throw(MException("mQueue:OutOfBoundary", "Index out of array " + ...
                     "boundary."));
+            end
+        end
+    end
+
+    methods(Access = private, Hidden)
+        function cleanup(this)
+            % call object delete for memory free
+            cellfun(@free, this.data_v);
+
+            % clear built-in value classes
+            this.data_v = {};
+            
+            this.length = 0;
+
+            function free(x)
+                if isobject(x) && isvalid(x) && ...
+                        ismember("delete", string(methods(x)))
+                    x.delete();     % call 'delete'
+                end
             end
         end
     end
