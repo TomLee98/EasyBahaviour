@@ -15,6 +15,10 @@ classdef PopulationAnalyzer
             
             this.options = options_;
         end
+
+        function delete(this)
+            % ~
+        end
     end
 end
 

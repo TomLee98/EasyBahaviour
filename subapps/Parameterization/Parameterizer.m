@@ -20,6 +20,10 @@ classdef Parameterizer
 
             this.options = options_;
         end
+
+        function delete(this)
+            % ~
+        end
     end
 end
 

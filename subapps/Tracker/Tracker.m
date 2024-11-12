@@ -19,6 +19,10 @@ classdef Tracker
 
             this.options = options_;
         end
+
+        function delete(this)
+            % ~
+        end
     end
 
     methods(Access = public)
