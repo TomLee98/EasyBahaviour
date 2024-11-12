@@ -412,7 +412,7 @@ classdef EBDAQ < handle
 
         function value = GetCurrentTask(this)
             if this.IsConnected
-                if this.cmd_pointer > 0
+                if (this.cmd_pointer > 0) && (this.cmd_pointer < size(this.commands, 1))
                     value = this.commands(this.cmd_pointer, :); % 1-by-4 table
                 else
                     value = table('Size', [0, 4], ...

@@ -307,6 +307,7 @@ classdef EBKernel < handle
                 frame = this.devices{"camera"}.GetCurrentFrame();
                 % require current task
                 task = this.devices{"daq_device"}.GetCurrentTask();
+                if isempty(task), code = ""; else, code = task.code; end
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
                     % track followed, parallel
@@ -331,7 +332,7 @@ classdef EBKernel < handle
                 end
 
                 % construct VideoFrame
-                vf = EBVideoFrame(frame{1}, frame{2}, task.code, scale, ...
+                vf = EBVideoFrame(frame{1}, frame{2}, code, scale, ...
                     boxes_tot{end}, gcs_tot{end});
 
                 % save video frames
