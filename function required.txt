@@ -5,7 +5,7 @@ V1          Archimedes        阿基米德
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
   |     |- [Update] Basic framework: extension hardware-software system
-  |- V1.1       2024/11/12
+  |- V1.1       2024/11/13
   |     |- [Update] Optimize response speed and experiment time accuracy
   |     |- [Update] RAW images export as Tiff file (ImageJ checked)
   |     |- [Update] Add 'Video Player' Component
@@ -14,8 +14,9 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs] HardwareConfiguration display bug when reloading
   |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 
   |     |- [Fix Bugs] TODO: Camera ROI/Binning Setting when connected
-  |     |- [Fix Bugs] TODO: memory release after running
+  |     |- [Fix Bugs] memory overflow after running: mQueue with objects
   |- V1.2       2024/11
+  |     |- [Update] TODO: Add 'New Experiment', clear buffer and initialize app
   |     |- [Update] TODO: Add 'Tracker'
   |     |- [Fix Bugs]
   |- V1.3       2024/11
