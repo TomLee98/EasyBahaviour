@@ -158,7 +158,7 @@ classdef EBImages < handle
 
     methods (Static)
         function e = empty()
-            e = Images("dynamic", [], []);
+            e = EBImages("dynamic", [], []);
         end
     end
 end
