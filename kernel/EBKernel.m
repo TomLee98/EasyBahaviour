@@ -50,6 +50,8 @@ classdef EBKernel < handle
 
             this.body = ctnr;
             this.paradigm = pdgm;
+
+            this.videos = EBVideo.empty();
         end
 
         function delete(this)

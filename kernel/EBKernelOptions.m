@@ -49,6 +49,26 @@ classdef EBKernelOptions < handle
             parse(p, varargin{:});
         end
 
+        %% ScaleOptions Getter & Setter
+        function value = get.ScaleOptions(this)
+            value = this.option("scale");
+        end
+
+        %% TrackerOptions Getter & Setter
+        function value = get.TrackerOptions(this)
+            value = this.option("tracker");
+        end
+
+        %% ParameterizerOptions Getter & Setter
+        function value = get.ParameterizerOptions(this)
+            value = this.option("parameterizer");
+        end
+
+        %% PopulationOptions Getter & Setter
+        function value = get.PopulationOptions(this)
+            value = this.option("population");
+        end
+
         %% XResolution Getter & Setter
         function value = get.XResolution(this)
             value = this.option("scale").xRes;
