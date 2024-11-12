@@ -16,9 +16,10 @@ classdef EBVideo < handle
                 frame_rate_     (1,1)   double  {mustBePositive} = 25
             end
 
-            % set mode
+            % set variables
             this.mode = mode_;
             this.frame_rate = frame_rate_;
+            this.video_frames = mQueue();
 
             % initialize data
             switch mode_
@@ -65,6 +66,7 @@ classdef EBVideo < handle
         function frame = GetLastFrame(this)
             n = numel(this.video_frames);
             if n > 0
+                n = this.numel();
                 frame = GetFrame(this, n);
             else
                 warning("EBVideo:emptyVideo", "No valid frames.");

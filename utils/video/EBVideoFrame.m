@@ -1,4 +1,4 @@
-classdef EBVideoFrame
+classdef EBVideoFrame < handle
     %VIDEOFRAME This is video frame object, with basic properties could be
     % illstruated on VideoPlayer
     % generate as value object
@@ -76,6 +76,20 @@ classdef EBVideoFrame
     methods(Access = public)
         function value = isempty(this)
             value = isempty(this.image_data);
+        end
+
+        function value = isequal(this, rhs_)
+            arguments
+                this
+                rhs_    (1,1)   EBVideoFrame
+            end
+
+            value = isequal(this.image_data, rhs_.image_data) ...
+                && isequal(this.meta_data, rhs_.meta_data) ...
+                && isequal(this.scale, rhs_.scale) ...
+                && isequal(this.time_stamp, rhs_.time_stamp) ...
+                && isequal(this.detect_boxes, rhs_.detect_boxes) ...
+                && isequal(this.geometric_centers, rhs_.geometric_centers);
         end
     end
 end
