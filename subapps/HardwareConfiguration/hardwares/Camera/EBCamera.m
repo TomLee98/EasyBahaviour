@@ -70,7 +70,7 @@ classdef EBCamera < handle
             this.devide_id = identity_;
             this.iformat = format_;
 
-            % default setting
+            % default setting: gentl-> acA2000-165um
             this.img_option = struct("BinningHorizontal",   1, ...
                                      "BinningVertical",     1, ...
                                      "ROIWidth",            2048, ...
@@ -505,6 +505,12 @@ classdef EBCamera < handle
                 value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
+                % realtime modifing
+                rpos = this.viobj.ROIPosition;
+                rpos(1) = value;
+                this.viobj.ROIPosition = rpos;
+
+                % store
                 this.img_option.OffsetX = value;
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
@@ -529,6 +535,12 @@ classdef EBCamera < handle
                 value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
+                % realtime modifing
+                rpos = this.viobj.ROIPosition;
+                rpos(2) = value;
+                this.viobj.ROIPosition = rpos;
+
+                % store
                 this.img_option.OffsetY = value;
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
@@ -617,22 +629,39 @@ classdef EBCamera < handle
         function Connect(this)
             if ~this.IsConnected
                 try
-                    % new object
+                    % get object (link to old profile)
                     this.viobj = videoinput(this.Adapter, ...
                                             this.DeviceID, ...
                                             this.ImageFormat);
                     this.vsobj = getselectedsource(this.viobj);
 
+                    % set binning at first is not match, which will modify resolution
+                    % next time
+                    if (this.vsobj.BinningHorizontal ~= this.img_option.BinningHorizontal) ...
+                            || (this.vsobj.BinningVertical ~= this.img_option.BinningVertical)
+                        this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
+                        this.vsobj.BinningVertical = this.img_option.BinningVertical;
+
+                        % delete videoinput and reconnect
+                        delete(this.viobj);
+                        this.viobj = videoinput(this.Adapter, ...
+                            this.DeviceID, ...
+                            this.ImageFormat);
+                        % resource
+                        this.vsobj = getselectedsource(this.viobj);
+                    end
+
+                    % set new profile
                     % set trigger parameters
                     triggerconfig(this.viobj, 'manual');
                     this.viobj.TriggerRepeat = inf;
                     this.viobj.FramesPerTrigger = 1;
 
                     % set ROI parameters
-                    % fixed this instance
-                    this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
-                    this.vsobj.BinningVertical = this.img_option.BinningVertical;
-                    this.viobj.ROIPosition = [0, 0, this.img_option.ROIWidth, this.img_option.ROIHeight];
+                    this.viobj.ROIPosition = [this.img_option.OffsetX, ...
+                                              this.img_option.OffsetY, ...
+                                              this.img_option.ROIWidth, ...
+                                              this.img_option.ROIHeight];
                 catch ME
                     throw(ME);
                 end
@@ -674,12 +703,7 @@ classdef EBCamera < handle
                             this.viobj.PreviewFullBitDepth = fbd;
 
                             if isempty(hImage) || ~isvalid(hImage)
-                                preview(this.viobj);        % preview will refresh size
-                                % resize as set position dynamically
-                                this.viobj.ROIPosition = [this.img_option.OffsetX, ...
-                                                          this.img_option.OffsetY, ...
-                                                          this.img_option.ROIWidth, ...
-                                                          this.img_option.ROIHeight];
+                                preview(this.viobj);
                             else
                                 if isa(hImage, 'matlab.graphics.primitive.Image')
                                     preview(this.viobj, hImage);
@@ -778,16 +802,8 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            tic;
             % start object
             start(this.viobj);  % about 220 ms
-            
-            % set capture ROI dynamically
-            this.viobj.ROIPosition = [this.img_option.OffsetX, ...
-                                      this.img_option.OffsetY, ...
-                                      this.img_option.ROIWidth, ...
-                                      this.img_option.ROIHeight];
-            toc;
             
             % set the camera beginning
             this.start_t = tic;
