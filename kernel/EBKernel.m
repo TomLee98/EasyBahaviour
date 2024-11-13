@@ -7,7 +7,7 @@ classdef EBKernel < handle
     % EBKernel manage two data queue: raw data()
 
     properties (Constant, Hidden)
-        DAQ_DELAY = 0.2             % DAQ-Kernel response delay (to camera) 
+        DAQ_DELAY = 0.3             % DAQ-Kernel response delay (to camera) 
     end
 
     properties(Access = public, Dependent)
@@ -266,6 +266,10 @@ classdef EBKernel < handle
             end
         end
 
+        function clear_buffer(this)
+            this.videos.Clear();
+        end
+
         function update_paradigm(this, pdgm)
             arguments
                 this
@@ -309,7 +313,7 @@ classdef EBKernel < handle
                 frame = this.devices{"camera"}.GetCurrentFrame();
                 % require current task
                 task = this.devices{"daq_device"}.GetCurrentTask();
-                if isempty(task), code = ""; else, code = task.code; end
+                if isempty(task), code = "CLOSE"; else, code = task.code; end
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
                     % track followed, parallel
