@@ -4,6 +4,7 @@ classdef EBCamera < handle
     
     properties(Access=private)
         adapter     (1,1)   string                              % 1-by-1 string, the hardware adapter
+        img_option  (1,1)   struct                              % 1-by-1 struct, with options must be setting before camera linked
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
         duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
@@ -68,6 +69,12 @@ classdef EBCamera < handle
             this.adapter = adapter_;
             this.devide_id = identity_;
             this.iformat = format_;
+
+            % default setting
+            this.img_option = struct("BinningHorizontal",   1, ...
+                                     "BinningVertical",     1, ...
+                                     "ROIWidth",            2048, ...
+                                     "ROIHeight",           1088);
 
             % initialize video buffer
             this.ImagesBuffer = EBImages.empty();
@@ -175,8 +182,7 @@ classdef EBCamera < handle
             if this.IsConnected
                 value = this.vsobj.BinningHorizontal;
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not get parameters."));
+                value = this.img_option.BinningHorizontal;
             end
         end
         
@@ -187,28 +193,10 @@ classdef EBCamera < handle
             end
 
             if this.IsConnected
-                if isrunning(this.viobj)|| this.IsLiving
-                    throw(MException("EBCamera:invalidAccess", "Running camera " + ...
-                        "binning is unsetable."));
-                else
-                    pre_value = this.vsobj.BinningHorizontal;
-                    this.vsobj.BinningHorizontal = value;
-
-                    if this.ROIAutoScale == true
-                        this.OffsetX = round(this.OffsetX * pre_value/value);
-                        this.ROIWidth = round(this.ROIWidth * pre_value/value);
-                    else
-                        rpos = this.VideoResolution;
-                        if this.OffsetX + this.ROIWidth > rpos(3)
-                            % reset ROI area on X
-                            this.OffsetX = 0;
-                            this.ROIWidth = rpos(3);
-                        end
-                    end
-                end
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "binning is unsetable."));
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not set parameters."));
+                this.img_option.BinningHorizontal = value;
             end
         end
 
@@ -217,8 +205,7 @@ classdef EBCamera < handle
             if this.IsConnected
                 value = this.vsobj.BinningVertical;
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not get parameters."));
+                value = this.img_option.BinningVertical;
             end
         end
 
@@ -229,28 +216,10 @@ classdef EBCamera < handle
             end
 
             if this.IsConnected
-                if isrunning(this.viobj) || this.IsLiving
-                    throw(MException("EBCamera:invalidAccess", "Running camera " + ...
-                        "binning is unsetable."));
-                else
-                    pre_value = this.vsobj.BinningVertical;
-                    this.vsobj.BinningVertical = value;
-
-                    if this.ROIAutoScale == true
-                        this.OffsetY = round(this.OffsetY * pre_value/value);
-                        this.ROIHeight = round(this.ROIHeight * pre_value/value);
-                    else
-                        rpos = this.VideoResolution;
-                        if this.OffsetY + this.ROIHeight > rpos(4)
-                            % reset ROI area on Y
-                            this.OffsetY = 0;
-                            this.ROIHeight = rpos(4);
-                        end
-                    end
-                end
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "binning is unsetable."));
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not set parameters."));
+                this.img_option.BinningVertical = value;
             end
         end
 
@@ -674,6 +643,15 @@ classdef EBCamera < handle
                     triggerconfig(this.viobj, 'manual');
                     this.viobj.TriggerRepeat = inf;
                     this.viobj.FramesPerTrigger = 1;
+
+                    % set ROI parameters
+                    % fixed this instance
+                    offset_x = this.viobj.ROIPosition(1);
+                    offset_y = this.viobj.ROIPosition(2);
+                    this.viobj.BinningHorizontal = this.img_option.BinningHorizontal;
+                    this.viobj.BinningHorizontal = this.img_option.BinningVertical;
+                    this.viobj.ROIPosition = [offset_x, offset_y, ...
+                        this.img_option.ROIWidth, this.img_option.ROIHeight];
                 catch ME
                     throw(ME);
                 end
@@ -836,6 +814,7 @@ classdef EBCamera < handle
             end
 
             warning(state, 'imaq:gige:adaptorPropertyHealed');
+            warning(state, 'imaq:gentl:adaptorDimChangeResettingROI');
             warning(state, 'imaq:preview:typeBiggerThanUINT8');
         end
     end
