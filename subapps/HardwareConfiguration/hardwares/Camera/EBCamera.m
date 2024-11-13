@@ -74,7 +74,9 @@ classdef EBCamera < handle
             this.img_option = struct("BinningHorizontal",   1, ...
                                      "BinningVertical",     1, ...
                                      "ROIWidth",            2048, ...
-                                     "ROIHeight",           1088);
+                                     "ROIHeight",           1088, ...
+                                     "OffsetX",             0, ...
+                                     "OffsetY",             0);
 
             % initialize video buffer
             this.ImagesBuffer = EBImages.empty();
@@ -503,12 +505,7 @@ classdef EBCamera < handle
                 value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
-                try
-                    rpos = this.viobj.ROIPosition; rpos(1) = value;
-                    this.viobj.ROIPosition= rpos;
-                catch ME
-                    throw(ME);
-                end
+                this.img_option.OffsetX = value;
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not set parameters."));
@@ -532,12 +529,7 @@ classdef EBCamera < handle
                 value   (1,1)   double  {mustBeNonnegative, mustBeInteger}
             end
             if this.IsConnected
-                try
-                    rpos = this.viobj.ROIPosition; rpos(2) = value;
-                    this.viobj.ROIPosition = rpos;
-                catch ME
-                    throw(ME);
-                end
+                this.img_option.OffsetY = value;
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not set parameters."));
@@ -638,11 +630,9 @@ classdef EBCamera < handle
 
                     % set ROI parameters
                     % fixed this instance
-                    roi = this.viobj.ROIPosition;
                     this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
-                    this.vsobj.BinningHorizontal = this.img_option.BinningVertical;
-                    this.viobj.ROIPosition = [roi(1:2), ...
-                        this.img_option.ROIWidth, this.img_option.ROIHeight];
+                    this.vsobj.BinningVertical = this.img_option.BinningVertical;
+                    this.viobj.ROIPosition = [0, 0, this.img_option.ROIWidth, this.img_option.ROIHeight];
                 catch ME
                     throw(ME);
                 end
@@ -655,7 +645,8 @@ classdef EBCamera < handle
         function Disconnect(this)
             if this.IsConnected
                 % delete video control obejct
-                delete(this.viobj); 
+                delete(this.viobj);
+
                 this.viobj = [];
                 this.vsobj = [];        % garbage collector auto clear
 
@@ -683,7 +674,12 @@ classdef EBCamera < handle
                             this.viobj.PreviewFullBitDepth = fbd;
 
                             if isempty(hImage) || ~isvalid(hImage)
-                                preview(this.viobj);
+                                preview(this.viobj);        % preview will refresh size
+                                % resize as set position dynamically
+                                this.viobj.ROIPosition = [this.img_option.OffsetX, ...
+                                                          this.img_option.OffsetY, ...
+                                                          this.img_option.ROIWidth, ...
+                                                          this.img_option.ROIHeight];
                             else
                                 if isa(hImage, 'matlab.graphics.primitive.Image')
                                     preview(this.viobj, hImage);
@@ -782,8 +778,17 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
+            tic;
+            % start object
             start(this.viobj);  % about 220 ms
-
+            
+            % set capture ROI dynamically
+            this.viobj.ROIPosition = [this.img_option.OffsetX, ...
+                                      this.img_option.OffsetY, ...
+                                      this.img_option.ROIWidth, ...
+                                      this.img_option.ROIHeight];
+            toc;
+            
             % set the camera beginning
             this.start_t = tic;
             this.start_d = datetime("now");
