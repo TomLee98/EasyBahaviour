@@ -58,7 +58,7 @@ classdef EBKernel < handle
             % hardware disconnect
             if this.devices.isConfigured
                 for ky = this.devices.keys("uniform")'
-                    if isobject(this.devices{ky})
+                    if isobject(this.devices{ky}) && isvalid(this.devices{ky})
                         this.devices{ky}.delete();       % call object delete
                     end
                 end

@@ -118,7 +118,7 @@ classdef EBImages < handle
 
         function Clear(this)
             % clean up image queue and time
-            this.image_queue.delete();
+            this.image_queue.clear();
 
             this.time = [];
         end

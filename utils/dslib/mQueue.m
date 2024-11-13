@@ -59,6 +59,12 @@ classdef mQueue < matlab.mixin.Copyable
             len = this.length;
         end
 
+        function clear(this)
+            % clean data but keep this
+            this.cleanup();
+            
+        end
+
         function delete(this)
             % deconstructor
             this.cleanup();

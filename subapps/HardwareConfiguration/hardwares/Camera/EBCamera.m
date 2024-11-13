@@ -126,13 +126,13 @@ classdef EBCamera < handle
                         % there is no frame in the queue
                         value = this.fr_target;     % replace by target frame rate
                     elseif this.ImagesBuffer.Size == 1
-                        frame = this.ImagesBuffer.GetLastFrame();    % {image, time}
-                        value = 1/frame{2};
+                        [~, time] = this.ImagesBuffer.GetLastFrame();    % {image, time}
+                        value = 1/time;
                     else
                         n = this.ImagesBuffer.Size;
-                        frame_last = this.ImagesBuffer.GetFrame(n);
-                        frame_prev = this.ImagesBuffer.GetFrame(n-1);
-                        value = 1/(frame_last{2} - frame_prev{2});
+                        [~, time_last] = this.ImagesBuffer.GetFrame(n);
+                        [~, time_prev] = this.ImagesBuffer.GetFrame(n-1);
+                        value = 1/(time_last - time_prev);
                     end
                 end
             else
