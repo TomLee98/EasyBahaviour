@@ -570,16 +570,12 @@ classdef EBCamera < handle
                 this
                 value   (1,1)   double  {mustBePositive, mustBeInteger}
             end
+
             if this.IsConnected
-                try
-                    rpos = this.viobj.ROIPosition; rpos(3) = value;
-                    this.viobj.ROIPosition = rpos;
-                catch ME
-                    throw(ME);
-                end
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "can not set ROI."));
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not set parameters."));
+                this.img_option.ROIWidth = value;
             end
         end
 
@@ -599,16 +595,12 @@ classdef EBCamera < handle
                 this
                 value   (1,1)   double  {mustBePositive, mustBeInteger}
             end
+
             if this.IsConnected
-                try
-                    rpos = this.viobj.ROIPosition; rpos(4) = value;
-                    this.viobj.ROIPosition = rpos;
-                catch ME
-                    throw(ME);
-                end
+                throw(MException("EBCamera:invalidAccess", "Connected camera " + ...
+                    "can not set ROI."));
             else
-                throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
-                    "can not set parameters."));
+                this.img_option.ROIHeight = value;
             end
         end
 
@@ -646,11 +638,10 @@ classdef EBCamera < handle
 
                     % set ROI parameters
                     % fixed this instance
-                    offset_x = this.viobj.ROIPosition(1);
-                    offset_y = this.viobj.ROIPosition(2);
-                    this.viobj.BinningHorizontal = this.img_option.BinningHorizontal;
-                    this.viobj.BinningHorizontal = this.img_option.BinningVertical;
-                    this.viobj.ROIPosition = [offset_x, offset_y, ...
+                    roi = this.viobj.ROIPosition;
+                    this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
+                    this.vsobj.BinningHorizontal = this.img_option.BinningVertical;
+                    this.viobj.ROIPosition = [roi(1:2), ...
                         this.img_option.ROIWidth, this.img_option.ROIHeight];
                 catch ME
                     throw(ME);
