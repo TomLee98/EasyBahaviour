@@ -41,7 +41,7 @@ classdef EBVideo < handle
         end
 
         function delete(this)
-            delete(this.video_frames);
+            this.video_frames.delete();
 
             clear("this");
         end
