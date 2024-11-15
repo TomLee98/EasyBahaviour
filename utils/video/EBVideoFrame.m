@@ -9,6 +9,7 @@ classdef EBVideoFrame < handle
         ImageData           % ___/get, m-by-n uint8/uint16 image data
         MetaData            % ___/get, 1-by-1 string, command code, such as "A&B"
         Scale               % ___/get, 1-by-1 struct, [xRes, yRes, resUnit], resolution for pixel size
+        Tag                 % ___/get, 1-by-1 double, current frame tag, positive integer
         TimeStamp           % ___/get, 1-by-1 double, current frame relative captured time
     end
 
@@ -19,14 +20,16 @@ classdef EBVideoFrame < handle
         image_data          (:,:)           % image data
         meta_data           (1,1)   string  % command code, such as "A&B"
         scale               (1,1)   struct  % field: [xRes, yRes, resUnit]
+        tag                 (1,1)   double  % indicate current frame index
         time_stamp          (1,1)   double  % second
     end
     
     methods
-        function this = EBVideoFrame(image_, time_, meta_, scale_, boxes_, pos_)
+        function this = EBVideoFrame(image_, time_, tag_, meta_, scale_, boxes_, pos_)
             arguments
                 image_  (:,:)         
                 time_   (1,1)   double
+                tag_    (1,1)   double
                 meta_   (1,1)   string  = ""
                 scale_  (1,1)   struct  = struct("xRes",1, "yRes",1, "resUnit","mm")
                 boxes_  (:,6)   double  = double.empty(0, 6)
@@ -36,6 +39,7 @@ classdef EBVideoFrame < handle
             % immutable properties
             this.image_data = image_;
             this.time_stamp = time_;
+            this.tag = tag_;
             this.meta_data = meta_;
             this.scale = scale_;
             this.detect_boxes = boxes_;
@@ -67,6 +71,11 @@ classdef EBVideoFrame < handle
             value = this.scale;
         end
 
+        %% Tag Getter
+        function value = get.Tag(this)
+            value = this.tag;
+        end
+
         %% TimeStamp Getter
         function value = get.TimeStamp(this)
             value = this.time_stamp;
@@ -84,12 +93,7 @@ classdef EBVideoFrame < handle
                 rhs_    (1,1)   EBVideoFrame
             end
 
-            value = isequal(this.image_data, rhs_.image_data) ...
-                && isequal(this.meta_data, rhs_.meta_data) ...
-                && isequal(this.scale, rhs_.scale) ...
-                && isequal(this.time_stamp, rhs_.time_stamp) ...
-                && isequal(this.detect_boxes, rhs_.detect_boxes) ...
-                && isequal(this.geometric_centers, rhs_.geometric_centers);
+            value = (this.tag == rhs_.tag);
         end
     end
 end

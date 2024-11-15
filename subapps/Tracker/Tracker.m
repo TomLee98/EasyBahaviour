@@ -36,6 +36,8 @@ classdef Tracker
 
             boxes = double.empty(0, 6);
             gcs = double.empty(0, 3);
+
+            pause(0.5);
         end
     end
 end

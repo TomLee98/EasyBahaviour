@@ -828,6 +828,7 @@ classdef EBCamera < handle
             warning(state, 'imaq:gige:adaptorPropertyHealed');
             warning(state, 'imaq:gentl:adaptorDimChangeResettingROI');
             warning(state, 'imaq:preview:typeBiggerThanUINT8');
+            warning(state, 'MATLAB:timer:miliSecPrecNotAllowed');
         end
     end
 end

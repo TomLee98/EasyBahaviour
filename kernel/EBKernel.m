@@ -14,10 +14,11 @@ classdef EBKernel < handle
         CurrentVideoFrame   % ___/get, 1-by-1 VideoFrame object
         Devices             % ___/get, 1-by-1 dictionary
         Feature             % set/get, 1-by-3 EBStatus array, [TrackerStatus, ParameterizerStatus, PopulationStatus]
-        Frames              % ___/get, 1-by-1 Images object
-        FramesInfo          % ___/get, 0-by-13 or 1-by-13 table
+        Images              % ___/get, 1-by-1 Images object
+        ImagesInfo          % ___/get, 0-by-13 or 1-by-13 table
         IsRunning           % ___/get, 1-by-1 logical, indicate if kernel is running
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
+        NFramesProcessed    % ___/get, 1-by-1 processed frames with features
         Option              % set/get, 1-by-1 EBKernelOption, the options for running feature
         Status              % ___/get, 1-by-3 EBStatus array, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
@@ -26,7 +27,6 @@ classdef EBKernel < handle
     end
     
     properties(Access = private)
-        adjust_t        (1,1)   double              = 0                 % adjust time because of kernel using
         body            (1,1)                                           % container/caller, who ask kernel for update info
         devices         (1,1)   dictionary          = dictionary()      % devices dictionary
         duration        (1,1)   double              = 0                 % task duration
@@ -34,6 +34,7 @@ classdef EBKernel < handle
         options         (1,1)   EBKernelOptions                         % task options
         paradigm        (1,1)   EBParadigm                              % EBParadigm object, experiment pipeline defination
         parameterizer   (1,1)   Parameterizer                           % Parameterizer object, motion parameterize
+        npcs_frames     (1,1)   double              = 0                 % Processed frames number with feature
         pfanalyzer      (1,1)   PopulationAnalyzer                      % PopulationAnalyzer object, analyze population features
         start_time      (1,1)   uint64              = 0                 % kernel(camera) absolute start time from tic
         tracker         (1,1)   Tracker                                 % Tracker object, tracking object motion
@@ -102,7 +103,7 @@ classdef EBKernel < handle
         end
 
         %% Frames Getter
-        function value = get.Frames(this)
+        function value = get.Images(this)
             if this.devices.isConfigured ...
                     && this.devices{"camera"}.IsConnected
                 value = this.devices{"camera"}.ImagesBuffer;    % just read buffer
@@ -112,7 +113,7 @@ classdef EBKernel < handle
         end
 
         %% FramesInfo Getter
-        function value = get.FramesInfo(this)
+        function value = get.ImagesInfo(this)
             if this.devices.isConfigured ...
                     && this.devices{"camera"}.IsConnected
                 value = table('Size', [1, 13], ...
@@ -168,6 +169,10 @@ classdef EBKernel < handle
             else
                 value = nan;
             end
+        end
+
+        function value = get.NFramesProcessed(this)
+            value = this.npcs_frames;
         end
 
         %% Option Getter & Setter
@@ -287,6 +292,8 @@ classdef EBKernel < handle
 
         % run with kernal options
         function run(this)
+            this.npcs_frames = 0;
+
             %% Configure analysis tools
             this.tracker = Tracker(this.options.TrackerOptions);
             this.parameterizer = Parameterizer(this.options.ParameterizerOptions);
@@ -333,16 +340,20 @@ classdef EBKernel < handle
                     end
                 else
                     % tracking disabled
+                    % note very fast getter comes here
+                    pause(0.5);
                     boxes_tot = [boxes_tot, {double.empty(0, 6)}]; %#ok<AGROW>
                     gcs_tot = [gcs_tot, {double.empty(0, 3)}]; %#ok<AGROW>
                 end
 
                 % construct VideoFrame
-                vf = EBVideoFrame(frame{1}, frame{2}, code, scale, ...
-                    boxes_tot{end}, gcs_tot{end});
+                vf = EBVideoFrame(frame{1}, frame{2}, this.npcs_frames + 1, ...
+                    code, scale, boxes_tot{end}, gcs_tot{end});
 
                 % save video frames
                 this.videos.AddFrame(vf);
+
+                this.npcs_frames = this.npcs_frames + 1;
             end
 
             %% Post process variables
