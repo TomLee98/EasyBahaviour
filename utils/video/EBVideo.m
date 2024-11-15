@@ -12,7 +12,7 @@ classdef EBVideo < handle
             %EBVIDEO A Constructor
             arguments
                 mode_           (1,1)   string  {mustBeMember(mode_, ["static", "dynamic"])}
-                frames_         (:,1)   EBVideoFrame            = EBVideoFrame([], nan)
+                frames_         (:,1)   EBVideoFrame            = EBVideoFrame([], nan, nan)
                 frame_rate_     (1,1)   double  {mustBePositive} = 25
             end
 
@@ -70,7 +70,7 @@ classdef EBVideo < handle
                 frame = GetFrame(this, n);
             else
                 warning("EBVideo:emptyVideo", "No valid frames.");
-                frame = EBVideoFrame([], nan);
+                frame = EBVideoFrame([], nan, nan);
             end
         end
 
@@ -99,7 +99,7 @@ classdef EBVideo < handle
         function value = get_frame_at(this, fIndex)
             if fIndex > numel(this.video_frames)
                 warning("EBVideo:outOfBoundary", "Index out of video frames.");
-                value = EBVideoFrame([], nan);
+                value = EBVideoFrame([], nan, nan);
             else
                 value = this.video_frames.get(fIndex);
             end

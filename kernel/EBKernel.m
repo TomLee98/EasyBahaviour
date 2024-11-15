@@ -341,9 +341,9 @@ classdef EBKernel < handle
                 else
                     % tracking disabled
                     % note very fast getter comes here
-                    pause(0.5);
                     boxes_tot = [boxes_tot, {double.empty(0, 6)}]; %#ok<AGROW>
                     gcs_tot = [gcs_tot, {double.empty(0, 3)}]; %#ok<AGROW>
+                    pause(2/this.devices{"camera"}.AcquireFrameRate);
                 end
 
                 % construct VideoFrame
