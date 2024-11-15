@@ -5,10 +5,10 @@ V1          Archimedes        阿基米德
   |     |- [Update] Camera control: basler acA2000-165um support
   |     |- [Update] DAQ Device: NI USB-6501 NI-DAQ device
   |     |- [Update] Basic framework: extension hardware-software system
-  |- V1.1       2024/11/14
+  |- V1.1       2024/11/15
   |     |- [Update] Optimize response speed and experiment time accuracy
   |     |- [Update] RAW images export as Tiff file (ImageJ checked)
-  |     |- [Update] Add 'Video Player' Component
+  |     |- [Update] Add 'Video Player' Component, Basic function support
   |     |- [Update] EBVideo fully supported
   |     |- [Update] more robust extension hardware-software system
   |     |- [Fix Bugs] HardwareConfiguration display bug when reloading
