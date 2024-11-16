@@ -8,6 +8,7 @@ V1          Archimedes        阿基米德
   |- V1.1       2024/11/15
   |     |- [Update] Optimize response speed and experiment time accuracy
   |     |- [Update] RAW images export as Tiff file (ImageJ checked)
+  |     |- [Update] Add 'New Experiment', clear kernel buffer and initialize video player
   |     |- [Update] Add 'Video Player' Component, Basic function support
   |     |- [Update] EBVideo fully supported
   |     |- [Update] more robust extension hardware-software system
@@ -16,9 +17,8 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs] TCamera ROI/Binning Setting when connected
   |     |- [Fix Bugs] memory overflow after running: mQueue with objects
   |- V1.2       2024/11/
-  |     |- [Update] Add 'New Experiment', clear kernel buffer and initialize video player
   |     |- [Update] TODO: Add 'Tracker'
-  |     |- [Fix Bugs]
+  |     |- [Fix Bugs] TODO: memory release correctly after closing
   |- V1.3       2024/11
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
@@ -56,7 +56,7 @@ V2          Tesla           特斯拉
   |     |- [Fix Bugs]
 
 
-========================== Technology Stack ===========================
+========================== Technique Stack ===========================
 NOTE: real-time tracking 
 [1] detector
     (a) feature detection (SIFT, SURF, HOG, ...)
