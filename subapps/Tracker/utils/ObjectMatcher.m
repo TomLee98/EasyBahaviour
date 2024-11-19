@@ -1,6 +1,7 @@
 classdef ObjectMatcher
     %OBJECTMATCHER This class uses Hungarian algorithm to solve the object
     % matching problem
+    % We have 
     
     properties
         Property1

@@ -8,7 +8,7 @@ function [PoX, PoP] = OneStepKalmanFilter(A, Q, R, Y, PrX, PrP)
 % W~N(0,Q), V~N(0,R), COV(W,V)=0            - W:System Process Noise, V:Observation Noise
 %
 %% [one-step Kalman Filter Update]:
-% K(t) = P(t)/(P(t)+R)                      - Kalman Gain
+% K(t) = P(t)(P(t)+R)^(-1)                  - Kalman Gain
 % X(t+1) = A(t)(X(t)+K(t)(Y(t)-X(t)))       - Posterior System State
 % P(t+1) = A(t)(I-K(t))P(t)A(t)'+Q          - Posterior Error
 % X(0) = mean(eX(t<0)), P(0) = var(eX(t<0)) - Initial Value
