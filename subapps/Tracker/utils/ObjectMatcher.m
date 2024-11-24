@@ -1,7 +1,8 @@
 classdef ObjectMatcher
     %OBJECTMATCHER This class uses Hungarian algorithm to solve the object
     % matching problem
-    % We have 
+    % We have Predictor given current frame objects position prediction 
+    % and Detector given the current observation
     
     properties
         Property1

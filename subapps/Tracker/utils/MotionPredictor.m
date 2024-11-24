@@ -4,69 +4,110 @@ classdef MotionPredictor < handle
     % if there are no enough frames, predictor use naive prediction: assume
     % that no error in observation, motion is determined by movement-equation
 
+    properties (Constant, Hidden)
+        SYSTEM_DIMENSION = 8        % simplify marked as D
+    end
+
     properties (Access=public, Dependent)
-        KFStatus            % ___/get, 1-by-1 string, in ["off","on","ready"]
-        AutoKF              % set/get, 1-by-1 logical, true for running KF autometically
-        KFWindowSize        % set/get, 1-by-1 positive integer, indicate Kalman Filter Initialized Window Size
+        AutoKF              % ___/get, 1-by-1 logical, true for running KF autometically
+        KFStatus            % ___/get, 1-by-1 string, in ["await", "ready"]
+        KFWindowSize        % ___/get, 1-by-1 positive integer, indicate Kalman Filter Initialized Window Size
+        SmoothWindowSize    % set/get, 1-by-1 positive integer, indicate smoothing window size
     end
     
-    properties(Access = private)
+    properties(SetAccess = immutable, GetAccess = private)
         autokf  (1,1)   logical     % auto loading KF if condition satisfied
-        M       (1,1)   dictionary  % <string> -> <cell>, observed history, cell with N-by-T double matrix, dict with S samples
-        P       (1,1)   dictionary  % <string> -> <cell>, posterior error, cell with N-by-N double matrix, dict with S samples
-        Q       (1,1)   dictionary  % <string> -> <cell>, system noise covarance, cell with N-by-N double matrix, dict with S samples
-        R       (1,1)   dictionary  % <string> -> <cell>, observation covariance, cell with N-by-N double matrix, dict with S samples
+        kf_win  (1,1)   double      % indicate the lookback window size for Kalman Filter Q,R estimation
+    end
+
+    properties(Access = private)
+        M       (1,1)   dictionary  % <string> -> <cell>, observed history, cell with D-by-T double matrix, dict with S samples
+        P       (1,1)   dictionary  % <string> -> <cell>, posterior error, cell with D-by-D double matrix, dict with S samples
+        Q       (1,1)   dictionary  % <string> -> <cell>, system noise covarance, cell with D-by-D double matrix, dict with S samples
+        R       (1,1)   dictionary  % <string> -> <cell>, observation covariance, cell with D-by-D double matrix, dict with S samples
         sa      (1,1)   string      % smoothing algorithm, in ["EWMA", "UWMA"]
         sw      (1,1)   double      % smoothing window size
-        X       (1,1)   dictionary  % <string> -> <cell>, filtered system state, cell with N-by-1 double vector, dict with S samples
+        X       (1,1)   dictionary  % <string> -> <cell>, filtered system state, cell with D-by-1 double vector, dict with S samples
     end
     
     methods
-        function this = MotionPredictor(Q_, R_)
+        function this = MotionPredictor(N_, AutoKF_)
             %MOTIONPREDICTOR A Constructor
             arguments
-                Q_  (1,1)   dictionary = dictionary()
-                R_  (1,1)   dictionary = dictionary()
+                N_      (1,1)   double  {mustBePositive, mustBeInteger} = 15
+                AutoKF_ (1,1)   logical = true
             end
 
-            if ~Q_.isConfigured && ~R_.isConfigured
-                %
-            elseif Q_.isConfigured && R_.isConfigured
-                if ~isempty(setdiff(Q_.keys("uniform"), R_.keys("uniform")))
-                    throw(MException("MotionPredictor:invalidNoiseCovarance", ...
-                        "Noise covarance matrix with inconsistant labels."));
-                end
+            this.kf_win = N_;
+            this.autokf = AutoKF_;
+            this.sa = "EWMA";
+            this.sw = ceil(N_/3);
 
-                for ky = Q_.keys("uniform")'
-                    if any(size(Q_{ky})~=size(R_{ky}))
-                        throw(MException("MotionPredictor:invalidNoiseCovarance", ...
-                            "Noise covarance matrix with inconsistant size"));
-                    end
-                    if ~issymmetric(Q_{ky}) || ~all(eig(Q_{ky})>size(Q_{ky},1)*eps(max(eig(Q_{ky})))) ...
-                            || ~issymmetric(R_{ky}) || ~all(eig(R_{ky})>size(R_{ky},1)*eps(max(eig(R_{ky}))))
-                        throw(MException("MotionPredictor:invalidNoiseCovarance", ...
-                            "Noise covarance matrix must be positive finate"));
+            % iteration variables
+            this.M = dictionary();
+            this.Q = dictionary();
+            this.R = dictionary();
+            this.X = dictionary();
+            this.P = dictionary();
+        end
+
+        %% AutoKF Getter
+        function value = get.AutoKF(this)
+            value = this.autokf;
+        end
+
+        %% KFWindowSize Getter
+        function value = get.KFWindowSize(this)
+            value = this.kf_win;
+        end
+
+        %% KFStatus Getter
+        function value = get.KFStatus(this)
+            if this.M.isConfigured
+                value = "ready";
+                kys = this.M.keys("uniform");
+                for ky = this.M.keys("uniform")'
+                    if size(this.M{kys(1)}, 2) < this.kf_win
+                        value = "await";    % enough history size
+                        return;
                     end
                 end
             else
-                throw(MException("MotionPredictor:invalidNoiseCovarance", ...
-                            "Noise dictionary configuration not consistant."));
+                value = "await";
             end
-
-            this.M = dictionary();
-            this.Q = Q_;
-            this.R = R_;
-            this.X = dictionary();
-            this.P = dictionary();
-
-            % init
-            this.sa = "EWMA";
-            this.sw = 5;
         end
 
+        %% SmoothWindowSize Getter & Setter
+        function value = get.SmoothWindowSize(this)
+            value = this.sw;
+        end
+
+        function set.SmoothWindowSize(this, value)
+            arguments
+                this
+                value   (1,1)   double  {mustBePositive, mustBeInteger}
+            end
+
+            if value > this.kf_win
+                warning("MotionPredictor:badSmoothingWindowSize", ...
+                    "Window size has been modified by predictor automatically.");
+            end
+
+            this.sw = min(this.kf_win, value);
+        end
+    end
+
+    methods(Access = public)
         function X = Predict(this, A, Y, F)
             % This function use observed data Y and history to estimate 
             % current system status
+            % Input:
+            %   - this:
+            %   - A:
+            %   - Y:
+            %   - F:
+            % Output:
+            %   - X: 
             arguments
                 this
                 A       (:,:)   double
@@ -75,28 +116,52 @@ classdef MotionPredictor < handle
             end
 
             %% Output Prediction by Selected Predictor
-            
+            % [1] if select naive, naive predictor given next state estimation,
+            % current observation put into KF history, 'add' or 'remove' to
+            % keep the object identities consistant outer
+            % [2] if select kalman, use Y update observed history M, estimation
+            % X, and estimate Q and R
 
-            if ~this.M.isConfigured
-                throw(MException("MotionPredictor:uninitializedFilter", ...
-                    "Kalman filter has not initialized yet."));
+            if ~isempty(setdiff(Y.keys("uniform"), X_.keys("uniform")))
+                throw(MException("MotionPredictor:invalidSample", ...
+                    "Samples number is not consistant."));
             else
-                if ~isempty(setdiff(Y.keys("uniform"), X_.keys("uniform")))
-                    throw(MException("MotionPredictor:invalidSample", ...
-                        "Samples number is not consistant."));
+                if this.autokf
+                    if isequal("ready", this.KFStatus)
+                        F = "Kalman";           % change to Kalman algorithm
+                    else
+                        F = "Naive";
+                    end
                 end
 
-                % call Kalman filter on samples
-                for ky = Y.keys("uniform")'
-                    [this.X{ky}, this.P{ky}] = OneStepKalmanFilter(A, ...
-                        this.Q{ky}, this.R{ky}, Y{ky}, this.X{ky}, this.P{ky});
-                end
+                switch F
+                    case "Naive"
+                        % just use transformation matrix
+                        for ky = Y.keys("uniform")'
+                            this.X{ky} = A*Y{ky};
+                            if size(this.M{ky}, 2) == this.kf_win
+                                this.M{ky}(:,1)=[];
+                            end
+                            this.M{ky} = [this.M{ky}, Y{ky}];
+                        end
+                    case "Kalman"
+                        % call Kalman filter on samples
+                        for ky = Y.keys("uniform")'
+                            [this.X{ky}, this.P{ky}] = OneStepKalmanFilter(A, ...
+                                this.Q{ky}, this.R{ky}, Y{ky}, this.X{ky}, this.P{ky});
+                        end
 
-                % update Q and R dynamically
-                this.updateQR(Y);
+                        % update Q and R dynamically
+                        this.updateQR(Y);
+                    otherwise
+                        throw(MException("MotionPredictor:invalidPredictor", ...
+                            "Unsupported predictor."));
+                end
 
                 X = this.X;
             end
+
+            
         end
 
         function RemoveSamples(this, keys)

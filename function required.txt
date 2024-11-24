@@ -17,6 +17,9 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs] TCamera ROI/Binning Setting when connected
   |     |- [Fix Bugs] memory overflow after running: mQueue with objects
   |- V1.2       2024/11/
+  |     |- [Update] TODO: Add 'LittleObjectDetector'
+  |     |- [Update] TODO: Add 'MotionPredictor'
+  |     |- [Update] TODO: Add 'ObjectMatcher'
   |     |- [Update] TODO: Add 'Tracker'
   |     |- [Fix Bugs] TODO: memory release correctly after closing
   |- V1.3       2024/11
