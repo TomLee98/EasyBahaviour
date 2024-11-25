@@ -1,9 +1,12 @@
-classdef Tracker
-    %TRACKER 此处显示有关此类的摘要
-    %   此处显示详细说明
+classdef Tracker < handle
+    %TRACKER This class implements a tracker, which could track little 
+    % moving objects in a complex scene
     
     properties(Access = private)
-        options
+        tracker_opts    (1,1)   struct                      % Track object options struct
+        lod_obj         (1,1)   LittleObjectDetector        % LittleObjectDetector object handle
+        mp_obj          (1,1)   MotionPredictor             % MotionPredictor object handle
+        om_obj          (1,1)                               % ObjectMatcher object handle
     end
     
     methods
@@ -17,7 +20,7 @@ classdef Tracker
                                                      "matcher",      "KM");
             end
 
-            this.options = options_;
+            this.tracker_opts = options_;
         end
 
         function delete(this)
@@ -26,16 +29,23 @@ classdef Tracker
     end
 
     methods(Access = public)
-        function [boxes, gcs] = Track(this, prevprevboxes, prevboxes, frame)
+        function [boxes, gcs] = Track(this, frame)
+            % This function implements "SORT" algorithm for object tracking
+            % Input:
+            %   - frame: 1-by-2 cell array, with {image, time}
+            % Output:
+            %   - boxes: 1-by-1 dictionary, identity(string) -> location(1-by-4 double, [x,y,w,h])
+            %   - gcs: 1-by-1 dictionary, identity(string) -> mass center(1-by-2 double, [x,y])
             arguments
                 this
-                prevprevboxes   (:, 6)   double
-                prevboxes       (:, 6)   double
-                frame           (1, 2)   cell
+                frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
             end
 
-            boxes = double.empty(0, 6);
-            gcs = double.empty(0, 3);
+            %% Detect Objects from Current Frame
+            this.lod_obj.detect(frame{1});
+
+            boxes = dictionary();
+            gcs = dictionary();
 
             pause(0.5);
         end

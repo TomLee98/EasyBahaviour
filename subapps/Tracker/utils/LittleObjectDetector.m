@@ -101,7 +101,7 @@ classdef LittleObjectDetector < handle
     end
 
     methods (Access = public)
-        function objects = Detect(this, image)
+        function objects = detect(this, image)
             %Detect This function detect objects in input image
             %% Previous Dectection for Coarse Detection
             bboxes = this.preDetect(image);

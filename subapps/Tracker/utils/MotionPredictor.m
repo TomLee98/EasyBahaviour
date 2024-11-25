@@ -10,17 +10,19 @@ classdef MotionPredictor < handle
 
     properties (Access=public, Dependent)
         AutoKF              % ___/get, 1-by-1 logical, true for running KF autometically
-        KFStatus            % ___/get, 1-by-1 string, in ["await", "ready"]
+        KFPredictedObjects  % ___/get, n-by-1 string vector, identity of objects predicted by KF
         KFWindowSize        % ___/get, 1-by-1 positive integer, indicate Kalman Filter Initialized Window Size
+        Objects             % ___/get, m-by-1 string vector, identity of total objects
         SmoothWindowSize    % set/get, 1-by-1 positive integer, indicate smoothing window size
     end
     
     properties(SetAccess = immutable, GetAccess = private)
-        autokf  (1,1)   logical     % auto loading KF if condition satisfied
-        kf_win  (1,1)   double      % indicate the lookback window size for Kalman Filter Q,R estimation
+        kf_enable   (1,1)   logical     % auto loading KF if condition satisfied
+        kf_win      (1,1)   double      % indicate the lookback window size for Kalman Filter Q,R estimation
     end
 
     properties(Access = private)
+        isInit  (1,1)   dictionary  % <string> -> <logical>, mark if the object could use Kalman
         M       (1,1)   dictionary  % <string> -> <cell>, observed history, cell with D-by-T double matrix, dict with S samples
         P       (1,1)   dictionary  % <string> -> <cell>, posterior error, cell with D-by-D double matrix, dict with S samples
         Q       (1,1)   dictionary  % <string> -> <cell>, system noise covarance, cell with D-by-D double matrix, dict with S samples
@@ -31,19 +33,20 @@ classdef MotionPredictor < handle
     end
     
     methods
-        function this = MotionPredictor(N_, AutoKF_)
+        function this = MotionPredictor(N_, EnableKF_)
             %MOTIONPREDICTOR A Constructor
             arguments
-                N_      (1,1)   double  {mustBePositive, mustBeInteger} = 15
-                AutoKF_ (1,1)   logical = true
+                N_          (1,1)   double  {mustBePositive, mustBeInteger} = 15
+                EnableKF_   (1,1)   logical = true
             end
 
             this.kf_win = N_;
-            this.autokf = AutoKF_;
+            this.kf_enable = EnableKF_;
             this.sa = "EWMA";
             this.sw = ceil(N_/3);
 
             % iteration variables
+            this.isInit = dictionary();
             this.M = dictionary();
             this.Q = dictionary();
             this.R = dictionary();
@@ -53,7 +56,18 @@ classdef MotionPredictor < handle
 
         %% AutoKF Getter
         function value = get.AutoKF(this)
-            value = this.autokf;
+            value = this.kf_enable;
+        end
+
+        %% KFPredictedObjects Getter
+        function value = get.KFPredictedObjects(this)
+            if (this.kf_enable == false) ...
+                    || ~this.isInit.isConfigured
+                value = strings().empty(0,1);
+            else
+                value = this.isInit.keys("uniform");
+                value = value(this.isInit.values);
+            end
         end
 
         %% KFWindowSize Getter
@@ -61,19 +75,12 @@ classdef MotionPredictor < handle
             value = this.kf_win;
         end
 
-        %% KFStatus Getter
-        function value = get.KFStatus(this)
-            if this.M.isConfigured
-                value = "ready";
-                kys = this.M.keys("uniform");
-                for ky = this.M.keys("uniform")'
-                    if size(this.M{kys(1)}, 2) < this.kf_win
-                        value = "await";    % enough history size
-                        return;
-                    end
-                end
+        %% Objects Getter
+        function value = get.Objects(this)
+            if ~this.isInit.isConfigured
+                value = strings().empty(0,1);
             else
-                value = "await";
+                value = this.isInit.keys("uniform");
             end
         end
 
@@ -98,269 +105,153 @@ classdef MotionPredictor < handle
     end
 
     methods(Access = public)
-        function X = Predict(this, A, Y, F)
+        function X = predict(this, A, Y, Mode)
             % This function use observed data Y and history to estimate 
             % current system status
             % Input:
             %   - this:
-            %   - A:
-            %   - Y:
-            %   - F:
+            %   - A: n-by-n transformation matrix
+            %   - Y: 1-by-1 dictionary, identity(string) -> box
+            %       feature(n-by-1 vector), current observation
             % Output:
-            %   - X: 
+            %   - X: 1-by-1 dictionary, identity(string) -> box 
+            %       feature(n-by-1 vector), predicted current location
             arguments
                 this
                 A       (:,:)   double
                 Y       (1,1)   dictionary
-                F       (1,1)   string  {mustBeMember(F,["Kalman", "Naive"])} = "Naive"
+                Mode    (1,1)   string      {mustBeMember(Mode, ["append", "drop"])} = "append"
             end
 
             %% Output Prediction by Selected Predictor
-            % [1] if select naive, naive predictor given next state estimation,
-            % current observation put into KF history, 'add' or 'remove' to
-            % keep the object identities consistant outer
-            % [2] if select kalman, use Y update observed history M, estimation
-            % X, and estimate Q and R
+            % [1] if Kalman filter enabled, update history length
+            % automatically, before history is enough, naive predictor only
+            % [2] if Kalman filter disabled, naive predictor only
 
-            if ~isempty(setdiff(Y.keys("uniform"), X_.keys("uniform")))
-                throw(MException("MotionPredictor:invalidSample", ...
-                    "Samples number is not consistant."));
-            else
-                if this.autokf
-                    if isequal("ready", this.KFStatus)
-                        F = "Kalman";           % change to Kalman algorithm
+            if this.kf_enable == true
+                % enable Kalman filter if history is enough, or use
+                % naive predictor only
+                for key = Y.keys("uniform")'
+                    if this.isInit.isConfigured && this.isInit.isKey(key)
+                        if this.isInit(key) == true
+                            %% run with Kalman Filter
+
+                            if Mode == "append"
+                                % update history, push and pop
+                                this.M{key} = [this.M{key}, Y{key}];
+                                this.M{key}(:,1) = [];
+                            end
+
+                            % update X, P
+                            [this.X{key}, this.P{key}] = OneStepKalmanFilter(A, ...
+                                this.Q{key}, this.R{key}, Y{key}, this.X{key}, this.P{key});
+
+                            % update Q, R by M
+                            this.updateQR(key);
+                        else
+                            %% update kalman running status automatically
+
+                            if Mode == "append"
+                                % update history, push only
+                                this.M{key} = [this.M{key}, Y{key}];
+                            end
+
+                            % update kalman initial status if possible
+                            if size(this.M{key}, 2) == this.kf_win
+                                % initialize kalman filter X, P
+                                this.initXP(key);
+
+                                % initialize Q and R
+                                this.updateQR(key);
+
+                                % modify flag
+                                this.isInit(key) = true;
+                            else
+                                % control equation only
+                                this.X{key} = A*Y{key};
+                            end
+                        end
                     else
-                        F = "Naive";
+                        if Mode == "append"
+                            % append new record
+                            this.isInit(key) = false;
+                            this.M{key} = Y{key};
+                        end
+                        this.X{key} = Y{key};     % no prediction, just current observation
                     end
                 end
 
-                switch F
-                    case "Naive"
-                        % just use transformation matrix
-                        for ky = Y.keys("uniform")'
-                            this.X{ky} = A*Y{ky};
-                            if size(this.M{ky}, 2) == this.kf_win
-                                this.M{ky}(:,1)=[];
-                            end
-                            this.M{ky} = [this.M{ky}, Y{ky}];
-                        end
-                    case "Kalman"
-                        % call Kalman filter on samples
-                        for ky = Y.keys("uniform")'
-                            [this.X{ky}, this.P{ky}] = OneStepKalmanFilter(A, ...
-                                this.Q{ky}, this.R{ky}, Y{ky}, this.X{ky}, this.P{ky});
-                        end
-
-                        % update Q and R dynamically
-                        this.updateQR(Y);
-                    otherwise
-                        throw(MException("MotionPredictor:invalidPredictor", ...
-                            "Unsupported predictor."));
-                end
-
                 X = this.X;
-            end
+            else
+                X = dictionary();
 
-            
+                for key = Y.keys("uniform")'
+                    % use naive predictor only
+                    X{key} = A*Y{key};
+                end
+            end
         end
 
-        function RemoveSamples(this, keys)
+        function remove(this, keys)
             arguments
                 this
                 keys     (:,1)   string
             end
 
             % remove all data corresponds to key
-            for ky = keys'
-                if this.X.isKey(ky)
-                    this.Q(ky) = [];
-                    this.R(ky) = [];
-                    this.X(ky) = [];
-                    this.P(ky) = [];
-                    this.M(ky) = [];
+            for key = keys'
+                if this.isInit.isKey(key)
+                    this.isInit(key) = [];
+                    this.Q(key) = [];
+                    this.R(key) = [];
+                    this.X(key) = [];
+                    this.P(key) = [];
+                    this.M(key) = [];
                 else
                     warning("MotionPredictor:invalidKey", ...
-                        "No such a key [%s] in predictor.", ky);
+                        "No such a key [%s] in predictor.", key);
                 end
             end
 
-        end
-
-        function AppendSample(this, Y)
-            arguments
-                this
-                Y       (1,1)   dictionary
-            end
-
-            % validate at first
-            MotionPredictor.validatedata(Y, this.sw);
-
-            % append new sample by given data Y
-            for ky = Y.keys("uniform")'
-                if this.X.isKey(ky)
-                    warning("MotionPredictor:invalidKey", ...
-                        "There exist a same key [%s] in predictor.", ky);
-                else
-                    % append M, Q, R
-                    this.appendQR(ky, Y{ky});
-
-                    % append X, P
-                    this.appendXP(ky, Y{ky});
-                end
-            end
         end
     end
 
     methods(Access = private)
 
-        function initKalmanFilter(this, Y, Sa, Sw)
-            %INITKALMANFILTER This function initializes Kalman filter
-            % parameters X0, P0
-            arguments
-                this
-                Y       (1,1)   dictionary
-                Sa      (1,1)   string  {mustBeMember(Sa, ["EWMA", "UWMA"])} = "EWMA"
-                Sw      (1,1)   double  {mustBePositive} = 5
-            end
-
-            % validate input data
-            MotionPredictor.validatedata(Y, Sw);
-
-            % init basic parameters
-            this.updateSmoothParameters(Sa, Sw);
-            
-            % use smooth algorithm for rough estimation
-            this.updateQR(Y);
-
-            % initialize X0 and P0
-            this.updateXP(Y);
-        end
-
-        function updateQR(this, Y)
-            % use Y update M
-            if ~this.M.isConfigured
-                this.M = Y;
-            else
-                % append history
-                for ky = this.M.keys("uniform")'
-                    this.M{ky}(:,1) = [];               % remove oldest record
-                    this.M{ky} = [this.M{ky}, Y{ky}];   % append new record
-                end
-            end
+        function updateQR(this, key)
+            data = this.M{key};
 
             % use smooth algorithm for rough estimation
-            switch this.sa
-                case "EWMA"
-                    smy = MotionPredictor.EWMA(this.M, this.sw, "all");
-                case "UWMA"
-                    smy = MotionPredictor.UWMA(this.M, this.sw, "all");
-                otherwise
-            end
-
-            % estimate Q and R one by one
-            for ky = this.M.keys("uniform")'
-                this.Q{ky} = cov(smy{ky}');
-                this.R{ky} = cov((this.M{ky}-smy{ky})');
-            end
-        end
-
-        function updateSmoothParameters(this, Sa, Sw)
-            this.sa= Sa;
-            this.sw = Sw;
-        end
-
-        function appendQR(this, key, value)
-             % use key-value pair update M
-             % note that key is string, value is N-by-T double matrix
-             this.M(key) = {value};
-
-             % use smooth algorithm for rough estimation
              switch this.sa
                  case "EWMA"
-                     smy = MotionPredictor.EWMA(this.M, this.sw, key);
+                     smy = MotionPredictor.EWMA(data, this.sw);
                  case "UWMA"
-                     smy = MotionPredictor.UWMA(this.M, this.sw, key);
+                     smy = MotionPredictor.UWMA(data, this.sw);
                  otherwise
              end
 
              % estimate Q and R then append
-             this.Q(ky) = {cov(smy{ky}')};
-             this.R(ky) = {cov((this.M{ky}-smy{ky})')};
+             this.Q(key) = {cov(smy')};
+             this.R(key) = {cov((data-smy)')};
         end
 
-        function updateXP(this, Y)
-            kys = Y.keys("uniform");
-            this.X(kys) = cellfun(@(x)mean(x,2), Y.values, "UniformOutput",false);
-            this.P(kys) = cellfun(@(x)cov(x'), Y.values, "UniformOutput",false);
-        end
-
-        function appendXP(this, key, value)
-            this.X(key) = {mean(value, 2)};
-            this.P(key) = {cov(value')};
+        function initXP(this, key)
+            this.X(key) = {mean(this.M{key}, 2)};
+            this.P(key) = {cov(this.M{key}')};
         end
     end
 
     methods(Static)
-        function sy = EWMA(Y, L, key)
+        function Y = EWMA(Y, L)
             lambda = 1 - 2/(L+1);
 
-            if isequal(key, "all")
-                sy = Y;
-                sy.values = cellfun(@(x)smt(x, lambda), Y.values, "UniformOutput",false);
-            elseif Y.isKey(key)
-                sy = dictionary(key, {smt(Y{key}, lambda)});
-            else
-                throw(MException("MotionPredictor:invalidKey", ...
-                    "No such a key exist."));
-            end
-
-            function s = smt(x, w)
-                s = x;
-                for n = 2:numel(x)
-                    s(n) = w*s(:,n-1,:) + (1-w)*x(:,n,:);
-                end
+            for n = 2:size(Y,2)
+                Y(:,n) = lambda*Y(:,n-1) + (1-lambda)*Y(:,n);
             end
         end
 
-        function sy = UWMA(Y, L, key)
-            if isequal(key, "all")
-                sy = Y;
-                sy.values = cellfun(@(x)smoothdata(x, 2, "movmean", L, "omitmissing"), ...
-                    Y.values, "UniformOutput",false);
-            elseif Y.isKey(key)
-                sy = dictionary(key, {smoothdata(Y{key}, 2, "movmean", L, "omitmissing")});
-            else
-                throw(MException("MotionPredictor:invalidKey", ...
-                    "No such a key exist."));
-            end
-            
-        end
-
-        function validatedata(Y, Sw)
-            arguments
-                Y   (1,1)   dictionary
-                Sw  (1,1)   double      = 5
-            end
-
-            if ~Y.isConfigured
-                throw(MException("MotionPredictor:invalidSample", ...
-                        "Data Y has not been configured."));
-            end
-            
-            ysize = cellfun(@size, Y.values, "UniformOutput", false);
-            try
-                ysize = cell2mat(ysize);
-                if numel(unique(ysize(:,2))) ~= 1
-                    throw(MException("MotionPredictor:invalidTime", ...
-                        "Sampling time stamps are not consistant."));
-                end
-                if ysize(1,2) <= Sw
-                    throw(MException("MotionPredictor:invalidTime", ...
-                        "Sampling time stamps are not enough."));
-                end
-            catch ME
-                rethrow(ME);
-            end
+        function Y = UWMA(Y, L)
+            Y = smoothdata(Y, 2, "movmean", L, "omitmissing");
         end
     end
 end

@@ -4,8 +4,8 @@ classdef EBVideoFrame < handle
     % generate as value object
 
     properties(GetAccess = public, Dependent)
-        DetectBoxes         % ___/get, k-by-6 double, [Identity, OffsetX, OffsetY, Width, Height, Angle]
-        GeometricCenters    % ___/get, k-by-3 double, [Identity, PositionX, PositionY]
+        DetectBoxes         % ___/get, 1-by-1 dictionary, identity |-> location, [OffsetX, OffsetY, Width, Height]
+        GeometricCenters    % ___/get, 1-by-1 dictionary, identity |-> location, [PositionX, PositionY]
         ImageData           % ___/get, m-by-n uint8/uint16 image data
         MetaData            % ___/get, 1-by-1 string, command code, such as "A&B"
         Scale               % ___/get, 1-by-1 struct, [xRes, yRes, resUnit], resolution for pixel size
@@ -15,13 +15,13 @@ classdef EBVideoFrame < handle
 
     
     properties(SetAccess = immutable, GetAccess = private)
-        detect_boxes        (:,6)   double  % [Identity, OffsetX, OffsetY, Width, Height, Angle]
-        geometric_centers   (:,3)   double  % [Identity, PositionX, PositionY]
-        image_data          (:,:)           % image data
-        meta_data           (1,1)   string  % command code, such as "A&B"
-        scale               (1,1)   struct  % field: [xRes, yRes, resUnit]
-        tag                 (1,1)   double  % indicate current frame index
-        time_stamp          (1,1)   double  % second
+        detect_boxes        (1,1)   dictionary  % [OffsetX, OffsetY, Width, Height]
+        geometric_centers   (1,1)   dictionary  % [PositionX, PositionY]
+        image_data          (:,:)               % image data
+        meta_data           (1,1)   string      % command code, such as "A&B"
+        scale               (1,1)   struct      % field: [xRes, yRes, resUnit]
+        tag                 (1,1)   double      % indicate current frame index
+        time_stamp          (1,1)   double      % second
     end
     
     methods
@@ -32,8 +32,8 @@ classdef EBVideoFrame < handle
                 tag_    (1,1)   double
                 meta_   (1,1)   string  = ""
                 scale_  (1,1)   struct  = struct("xRes",1, "yRes",1, "resUnit","mm")
-                boxes_  (:,6)   double  = double.empty(0, 6)
-                pos_    (:,3)   double  = double.empty(0, 3)
+                boxes_  (1,1)   dictionary  = dictionary()
+                pos_    (1,1)   dictionary  = dictionary()
             end
 
             % immutable properties

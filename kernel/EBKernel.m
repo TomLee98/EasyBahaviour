@@ -313,8 +313,7 @@ classdef EBKernel < handle
 
             %% Start calculation (backend parallel in each sub function)
             scale = this.options.ScaleOptions;
-            boxes_tot = {double.empty(0, 6), double.empty(0, 6)};
-            gcs_tot = {};
+
             while this.devices{"camera"}.IsRunning
                 % require current frame
                 frame = this.devices{"camera"}.GetCurrentFrame();
@@ -324,11 +323,7 @@ classdef EBKernel < handle
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
                     % track followed, parallel
-                    [boxes, gcs] = this.tracker.Track(boxes_tot{end-1}, boxes_tot{end}, frame);
-                    
-                    % combine detect box 
-                    boxes_tot = [boxes_tot, {boxes}]; %#ok<AGROW>
-                    gcs_tot = [gcs_tot, {gcs}]; %#ok<AGROW>
+                    [boxes, gcs] = this.tracker.Track(frame);
                     
                     if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
                         % parameterize followed, parallel
@@ -341,14 +336,12 @@ classdef EBKernel < handle
                 else
                     % tracking disabled
                     % note very fast getter comes here
-                    boxes_tot = [boxes_tot, {double.empty(0, 6)}]; %#ok<AGROW>
-                    gcs_tot = [gcs_tot, {double.empty(0, 3)}]; %#ok<AGROW>
                     pause(2/this.devices{"camera"}.AcquireFrameRate);
                 end
 
                 % construct VideoFrame
                 vf = EBVideoFrame(frame{1}, frame{2}, this.npcs_frames + 1, ...
-                    code, scale, boxes_tot{end}, gcs_tot{end});
+                    code, scale, boxes, gcs);
 
                 % save video frames
                 this.videos.AddFrame(vf);
