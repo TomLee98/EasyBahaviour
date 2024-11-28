@@ -21,10 +21,13 @@ V1          Archimedes        阿基米德
   |     |- [Update] TODO: Add 'MotionPredictor'
   |     |- [Update] TODO: Add 'ObjectMatcher'
   |     |- [Update] TODO: Add 'Tracker'
+  |     |- [Update] TODO: Add 'Manual Panel Control' on HardwareConfiguration "Test"
+  |     |- [Fix Bugs] free camera allocated memory when running new experiment
   |     |- [Fix Bugs] TODO: memory release correctly after closing
   |- V1.3       2024/11
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
+  |     |- [Update] TODO: Add long-time recording support (saving to disk realtime)
   |     |- [Fix Bugs]
   |- V1.3       2024/12/
   |     |- [Update] TODO: Preference Options support: <appearence>

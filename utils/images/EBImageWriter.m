@@ -69,13 +69,14 @@ classdef EBImageWriter < handle
    methods (Access = private)
        function saveAsTIFF(this, file)
            % call Tiff library built in MATLAB
+           % save no compressed raw data
            try
                dt = this.info.dateTime;
                dt.Format = "MM-dd HH:mm:ss.SSS";
                np = this.dataset.Size;
 
                %% open tiff file to write
-               tifobj = Tiff(file, "w");
+               tifobj = Tiff(file, "w8");   % save as BigTiff to avoid >4GB file error IO
 
                %% tag struct with image information
                tagstruct.ImageWidth = this.info.width;

@@ -386,7 +386,7 @@ classdef EBDAQ < handle
             end
         end
 
-        function Test(this)
+        function Test(this, command)
             % just write, pause, and write
             % do not use cmd_sender
 

@@ -272,7 +272,13 @@ classdef EBKernel < handle
         end
 
         function clear_buffer(this)
+            % clear video buffer
             this.videos.Clear();
+
+            % clear camera buffer
+            if this.devices.isConfigured && this.devices.isKey("camera")
+                this.devices{"camera"}.Clear();
+            end
         end
 
         function update_paradigm(this, pdgm)

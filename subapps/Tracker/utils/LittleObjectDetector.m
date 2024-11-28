@@ -23,31 +23,24 @@ classdef LittleObjectDetector < handle
     end
     
     methods
-        function this = LittleObjectDetector(classifier_, option_)
+        function this = LittleObjectDetector(file_classifier_, option_)
             %OBJECTDETECTOR A Constructor
             arguments
-                classifier_  (1,1)   string  {mustBeFile}
-                option_     (1,1)   struct = struct("nprange",      [600, 200], ... % number of pixels distribution(normal), [mu, sigma]
-                                                    "robustness",   0.99, ...       % adaptive sensitivity for foreground objects detection
-                                                    "nobjmax",      13, ...         % number of objects estimated
-                                                    "binning",      2)              % binning pixels on each direction
+                file_classifier_    (1,1)   string =  ""
+                option_             (1,1)   struct = struct("nprange",      [600, 200], ... % number of pixels distribution(normal), [mu, sigma]
+                                                            "robustness",   0.99, ...       % adaptive sensitivity for foreground objects detection
+                                                            "nobjmax",      13, ...         % number of objects estimated
+                                                            "binning",      2)              % binning pixels on each direction
             end
 
-            [~, ~, ext] = fileparts(classifier_);
-            if ~ismember(ext, [".bin", ".mat"])
-                throw(MException("LittleObjectDetector:invalidFile", ...
-                    "Unsupported predictor file."));
+            if ~isequal(file_classifier_, "") && isfile(file_classifier_)
+                % load immediatelly
+                this.load_classifier(file_classifier_);
             else
-                this.prop_opts = option_;
-                try
-                    S = load(classifier_, "-mat");
-                    this.classifier = S.SVM;
-                    this.detector_opts = S.option;
-                catch ME
-                    rethrow(ME);
-                end
+                % skip, caller uses load_classifier
             end
 
+            this.prop_opts = option_;
             this.view_flag = true;
         end
 
@@ -102,6 +95,11 @@ classdef LittleObjectDetector < handle
 
     methods (Access = public)
         function objects = detect(this, image)
+            arguments
+                this
+                image   (:,:)   {mustBeNumeric}
+            end
+
             %Detect This function detect objects in input image
             %% Previous Dectection for Coarse Detection
             bboxes = this.preDetect(image);
@@ -111,6 +109,27 @@ classdef LittleObjectDetector < handle
 
             %% Use Features to Generate Identity
             objects = this.makeIdentity(bboxes, features, image);
+        end
+
+        function load_classifier(this, file)
+            arguments
+                this
+                file    (1,1)   string  {mustBeFile}
+            end
+
+            [~, ~, ext] = fileparts(file);
+            if ~ismember(ext, [".bin", ".mat"])
+                throw(MException("LittleObjectDetector:invalidFile", ...
+                    "Unsupported predictor file."));
+            else
+                try
+                    S = load(file, "-mat");
+                    this.classifier = S.SVM;
+                    this.detector_opts = S.option;
+                catch ME
+                    rethrow(ME);
+                end
+            end
         end
     end
 

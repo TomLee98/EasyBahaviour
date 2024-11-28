@@ -747,7 +747,10 @@ classdef EBCamera < handle
                 throw(MException("EBCamera:invalidAction", "Disconnected camera " + ...
                     "can not capture video."));
             end
-            
+        end
+
+        function Clear(this)
+            this.ImagesBuffer.Clear();
         end
 
         function value = GetCurrentFrame(this)
