@@ -21,7 +21,7 @@ V1          Archimedes        阿基米德
   |     |- [Update] TODO: Add 'MotionPredictor'
   |     |- [Update] TODO: Add 'ObjectMatcher'
   |     |- [Update] TODO: Add 'Tracker'
-  |     |- [Update] TODO: Add 'Manual Panel Control' on HardwareConfiguration "Test"
+  |     |- [Update] Add 'Manual Panel Control' on HardwareConfiguration "Test"
   |     |- [Fix Bugs] free camera allocated memory when running new experiment
   |     |- [Fix Bugs] TODO: memory release correctly after closing
   |- V1.3       2024/11

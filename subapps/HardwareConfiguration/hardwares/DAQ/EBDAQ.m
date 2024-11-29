@@ -391,16 +391,11 @@ classdef EBDAQ < handle
             % do not use cmd_sender
 
             if this.IsConnected
-                % write close command
-                write(this.daqobj, false(size(this.commands.cmd(1,:))));
+                % write command
+                write(this.daqobj, command);
+
                 % read for init inner stack
                 read(this.daqobj, OutputFormat="Matrix");
-
-                write(this.daqobj, true(size(this.commands.cmd(1,:))));
-                pause(0.5);
-
-                % write close command
-                write(this.daqobj, false(size(this.commands.cmd(1,:))));
             end
         end
 
