@@ -16,7 +16,7 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 
   |     |- [Fix Bugs] TCamera ROI/Binning Setting when connected
   |     |- [Fix Bugs] memory overflow after running: mQueue with objects
-  |- V1.2       2024/11/
+  |- V1.2       2024/11/30
   |     |- [Update] TODO: Add 'LittleObjectDetector'
   |     |- [Update] TODO: Add 'MotionPredictor'
   |     |- [Update] TODO: Add 'ObjectMatcher'
