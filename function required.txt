@@ -12,18 +12,18 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add 'Video Player' Component, Basic function support
   |     |- [Update] EBVideo fully supported
   |     |- [Update] more robust extension hardware-software system
-  |     |- [Fix Bugs] HardwareConfiguration display bug when reloading
+  |     |- [Fix Bugs] HardwareConfiguration display bug after reloading
   |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 
   |     |- [Fix Bugs] TCamera ROI/Binning Setting when connected
   |     |- [Fix Bugs] memory overflow after running: mQueue with objects
   |- V1.2       2024/11/30
-  |     |- [Update] TODO: Add 'LittleObjectDetector'
-  |     |- [Update] TODO: Add 'MotionPredictor'
-  |     |- [Update] TODO: Add 'ObjectMatcher'
-  |     |- [Update] TODO: Add 'Tracker'
+  |     |- [Update] Add 'LittleObjectDetector'
+  |     |- [Update] Add 'MotionPredictor'
+  |     |- [Update] Add 'ObjectMatcher'
+  |     |- [Update] Add 'Tracker' (SORT Algorithm)
   |     |- [Update] Add 'Manual Panel Control' on HardwareConfiguration "Test"
   |     |- [Fix Bugs] free camera allocated memory when running new experiment
-  |     |- [Fix Bugs] TODO: memory release correctly after closing
+  |     |- [Fix Bugs] TODO: free memory correctly after closing
   |- V1.3       2024/11
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'

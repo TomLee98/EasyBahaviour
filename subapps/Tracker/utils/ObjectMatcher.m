@@ -5,17 +5,24 @@ classdef ObjectMatcher
     % and Detector given the current observation
     
     properties(Access = private)
-        opts
+        % cost and dist looks like "cluster distance" and "sample distance"
+        cost        % 1-by-1 string, indicate cost between two objects
+        dist        % 1-by-1 string, indicate distance between two pixels
     end
     
     methods
-        function this = ObjectMatcher(option)
+        function this = ObjectMatcher(cost_, dist_)
             %OBJECTMATCHER A Constructor
             arguments
-                option  (1,1)   struct  = struct("Distance", "Jaccard")
+                cost_   (1,1)   string  {mustBeMember(cost_, ...
+                    ["Jaccard", "Average", "CornerMin", "CornerMax"])} = "Jaccard"
+                dist_   (1,1)   string  {mustBeMember(dist_, ...
+                    ["Euclidean", "Manhattan"])} = "Euclidean"
+
             end
 
-            this.opts = option;
+            this.cost = cost_;
+            this.dist = dist_;
         end
     end
 
@@ -55,7 +62,7 @@ classdef ObjectMatcher
             % ||        a31   a32    a33    a34     ||
             % ======================================== %
             [CostMat, DistMax] = ObjectMatcher.getCostMatrix(predicted, ...
-                observed, this.opts.Distance);
+                observed, this.cost);
 
             if isempty(CostMat), return; end    % no object need to match
 
@@ -127,12 +134,13 @@ classdef ObjectMatcher
     end
 
     methods(Static)
-        function [CostMat, DistMax] = getCostMatrix(predicted, observed, cost)
+        function [CostMat, DistMax] = getCostMatrix(predicted, observed, cost, dist)
             arguments
                 predicted   (1,1)   dictionary
                 observed    (1,1)   dictionary
                 cost        (1,1)   string      {mustBeMember(cost, ...
                                     ["Jaccard", "Average", "CornerMin", "CornerMax"])} = "Jaccard"
+                dist        (1,1)   string  {mustBeMember(dist, ["Euclidean", "Manhattan"])} = "Euclidean"
             end
 
             keys_obs = observed.keys("uniform");
@@ -168,7 +176,15 @@ classdef ObjectMatcher
                             obs_c = [obsrt(1)+obsrt(3)/2, obsrt(2)+obsrt(4)/2];
                             pdt_c = [pdtrt(1)+pdtrt(3)/2, pdtrt(2)+pdtrt(4)/2];
 
-                            CostMat(m, n) = sqrt(sum((pdt_c - obs_c).^2));  % Euclidean Distance of Center
+                            switch dist
+                                case "Euclidean"
+                                    CostMat(m, n) = sqrt(sum((pdt_c - obs_c).^2));  % Euclidean Distance of Center
+                                case "Manhattan"
+                                    CostMat(m, n) = sum(abs(pdt_c - obs_c));        % Manhattan Distance of Center
+                                otherwise
+                                    throw(MException("ObjectMatcher:invalidDistance", ...
+                                        "Only Euclidean and Manhattan distance are supported."));
+                            end
                         end
                     end
 
@@ -189,9 +205,17 @@ classdef ObjectMatcher
                                        pdtrt(1:2) + [pdtrt(3),0]; ...
                                        pdtrt(1:2) + pdtrt(3:4)];
 
-                            D = pdist2(obsrtp4, pdtrtp4, "euclidean");
+                            switch dist
+                                case "Euclidean"
+                                    D = pdist2(obsrtp4, pdtrtp4, "euclidean");
+                                case "Manhattan"
+                                    D = pdist2(obsrtp4, pdtrtp4, "cityblock");
+                                otherwise
+                                    throw(MException("ObjectMatcher:invalidDistance", ...
+                                        "Only Euclidean and Manhattan distance are supported."));
+                            end
 
-                            CostMat(m, n) = min(D, [], "all");  % Minimum Euclidean Distance
+                            CostMat(m, n) = min(D, [], "all");  % Minimum Distance
                         end
                     end
 
@@ -212,7 +236,15 @@ classdef ObjectMatcher
                                 pdtrt(1:2) + [pdtrt(3),0]; ...
                                 pdtrt(1:2) + pdtrt(3:4)];
 
-                            D = pdist2(obsrtp4, pdtrtp4, "euclidean");
+                            switch dist
+                                case "Euclidean"
+                                    D = pdist2(obsrtp4, pdtrtp4, "euclidean");
+                                case "Manhattan"
+                                    D = pdist2(obsrtp4, pdtrtp4, "cityblock");
+                                otherwise
+                                    throw(MException("ObjectMatcher:invalidDistance", ...
+                                        "Only Euclidean and Manhattan distance are supported."));
+                            end
 
                             CostMat(m, n) = max(D, [], "all");  % Minimum Euclidean Distance
                         end

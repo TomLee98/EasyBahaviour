@@ -46,7 +46,7 @@ classdef MotionPredictor < handle
             this.sw = ceil(N_/3);
 
             % iteration variables
-            this.isInit = dictionary();
+            this.isInit = configureDictionary("string", "logical");
             this.M = dictionary();
             this.Q = dictionary();
             this.R = dictionary();
@@ -77,11 +77,7 @@ classdef MotionPredictor < handle
 
         %% Objects Getter
         function value = get.Objects(this)
-            if ~this.isInit.isConfigured
-                value = strings().empty(0,1);
-            else
-                value = this.isInit.keys("uniform");
-            end
+            value = this.isInit.keys("uniform");
         end
 
         %% SmoothWindowSize Getter & Setter
@@ -132,7 +128,7 @@ classdef MotionPredictor < handle
                 % enable Kalman filter if history is enough, or use
                 % naive predictor only
                 for key = Y.keys("uniform")'
-                    if this.isInit.isConfigured && this.isInit.isKey(key)
+                    if this.isInit.isKey(key)
                         if this.isInit(key) == true
                             %% run with Kalman Filter
 

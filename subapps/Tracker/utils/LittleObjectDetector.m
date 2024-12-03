@@ -16,22 +16,29 @@ classdef LittleObjectDetector < handle
     end
     
     properties(Access = private)
+        algorithm       % key technique branch
         classifier      % ClassificationECOC object, SVM multiclass model
-        prop_opts       % struct for preprocess options
         detector_opts   % struct with detector combined SVM options
+        prop_opts       % struct for preprocess options
         view_flag       % flag for result view
     end
     
     methods
-        function this = LittleObjectDetector(file_classifier_, option_)
+        function this = LittleObjectDetector(file_classifier_, alg, option_)
             %OBJECTDETECTOR A Constructor
             arguments
                 file_classifier_    (1,1)   string =  ""
+                alg                 (1,1)   string  {mustBeMember(alg,["svm", "yolov4", "unet"])} = "svm"
                 option_             (1,1)   struct = struct("nprange",      [600, 200], ... % number of pixels distribution(normal), [mu, sigma]
                                                             "robustness",   0.99, ...       % adaptive sensitivity for foreground objects detection
                                                             "nobjmax",      13, ...         % number of objects estimated
                                                             "binning",      2)              % binning pixels on each direction
             end
+
+            this.algorithm = alg;
+
+            this.prop_opts = option_;
+            this.view_flag = true;
 
             if ~isequal(file_classifier_, "") && isfile(file_classifier_)
                 % load immediatelly
@@ -39,9 +46,6 @@ classdef LittleObjectDetector < handle
             else
                 % skip, caller uses load_classifier
             end
-
-            this.prop_opts = option_;
-            this.view_flag = true;
         end
 
         %% Display Getter & Setter
@@ -124,8 +128,18 @@ classdef LittleObjectDetector < handle
             else
                 try
                     S = load(file, "-mat");
-                    this.classifier = S.SVM;
-                    this.detector_opts = S.option;
+                    switch this.algorithm
+                        case "svm"
+                            this.classifier = S.SVM;
+                            this.detector_opts = S.option;
+                        case "yolov4"
+                            % TODO
+                        case "unet"
+                            % TODO
+                        otherwise
+                            throw(MException("LittleObjectDetector", ...
+                                "Unsupported object detection algorithm."));
+                    end
                 catch ME
                     rethrow(ME);
                 end
@@ -173,11 +187,13 @@ classdef LittleObjectDetector < handle
             end
 
             if this.view_flag == true
+                figure; % new figure for debugging
                 imshow(image);
+                keys = objs.keys("uniform");
                 for k = 1:numel(ids)
                     if isequal(ids{k}, "larva"), color = "g"; else, color = "r"; end
                     rectangle("Position", bboxes(k,:), "EdgeColor",color,"LineWidth",1);
-                    text(bboxes(k,1)+bboxes(k,3)/2, bboxes(k,2)-3, ids{k}, ...
+                    text(bboxes(k,1)+bboxes(k,3)/2, bboxes(k,2)-3, keys(k), ...
                         "Color",color, "FontSize",12, "HorizontalAlignment", "center", ...
                         "VerticalAlignment", "bottom");
                 end
