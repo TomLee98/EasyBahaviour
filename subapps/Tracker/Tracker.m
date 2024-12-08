@@ -42,28 +42,14 @@ classdef Tracker < handle
                                                                        "yRes", 0.1));
             end
 
-            this.opts = options_;
-
+            % initialize variables
             this.obj_prev = configureDictionary("string", "cell");
             this.keys_lost = configureDictionary("string", "double");
             this.keys_stay = configureDictionary("string", "double");
             this.time_prev = 0;
 
             % initialize components handle
-            this.hLOD = LittleObjectDetector(this.opts.lodopts.classifier, ...
-                                             this.opts.lodopts.alg);
-            this.hMP = MotionPredictor(this.opts.mpopts.KFWin, ...
-                                       this.opts.mpopts.KFEnable);
-            this.hOM = ObjectMatcher(this.opts.omopts.cost, ...
-                                     this.opts.omopts.dist);
-
-            mdl = this.opts.tkopts.mmdl;
-            scale = struct("xRes", this.opts.tkopts.xRes, ...
-                           "yRes", this.opts.tkopts.yRes);
-            target = find(this.hLOD.LabelsOrder==this.opts.tkopts.target);
-            lambda = this.opts.tkopts.pth^(1/(this.opts.tkopts.memlen+1));
-
-            this.hBMC = BayesianMotionClassifier(mdl, scale, target, lambda);
+            refreshComponents(this, options_);
         end
 
         function delete(this)
@@ -142,6 +128,39 @@ classdef Tracker < handle
 
             %% Output Simplified Geometric Centers
             gcs = Parameterizer.GetGeometricCenters(frame{1}, boxes);
+        end
+
+        function status = refreshComponents(this, options)
+            arguments
+                this
+                options     (1,1)   struct
+            end
+
+            this.opts = options;
+
+            try
+                this.hLOD = LittleObjectDetector(this.opts.lodopts.classifier, ...
+                    this.opts.lodopts.alg);
+                this.hMP = MotionPredictor(this.opts.mpopts.KFWin, ...
+                    this.opts.mpopts.KFEnable);
+                this.hOM = ObjectMatcher(this.opts.omopts.cost, ...
+                    this.opts.omopts.dist);
+
+                mdl = this.opts.tkopts.mmdl;
+                scale = struct("xRes", this.opts.tkopts.xRes, ...
+                    "yRes", this.opts.tkopts.yRes);
+                lambda = this.opts.tkopts.pth^(1/(this.opts.tkopts.memlen+1));
+
+                if this.hLOD.Loaded
+                    target = find(this.hLOD.LabelsOrder==this.opts.tkopts.target);
+                    this.hBMC = BayesianMotionClassifier(mdl, scale, target, lambda);
+                    status = 0;
+                else
+                    status = -1;
+                end
+            catch ME
+                rethrow(ME);
+            end
         end
     end
 

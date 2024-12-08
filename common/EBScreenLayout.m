@@ -13,6 +13,7 @@ classdef EBScreenLayout
     end
 
     enumeration
+        INIT_SCREEN_SIZE    ([512, 272]) % initialized [width, height]
         TIMESTAMP_OFFSET_X  (10)         % relative to left border
         TIMESTAMP_OFFSET_Y  (10)         % relative to top border
         SCALE_OFFSET_X      (10)         % relative to left border

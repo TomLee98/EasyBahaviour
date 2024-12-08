@@ -2,6 +2,8 @@ classdef EBVideo < handle
     %EBVIDEO This is video defination
 
     properties(Access = public, Dependent)
+        FramesNum
+        FrameRate
         IsEmpty
         Mode
     end
@@ -43,6 +45,23 @@ classdef EBVideo < handle
                     this.video_frames.enqueue(frames_(k));
                 end
             end
+        end
+
+        function r = get.FramesNum(this)
+            r = numel(this.video_frames);
+        end
+
+        function r = get.FrameRate(this)
+            r = this.frame_rate;
+        end
+
+        function set.FrameRate(this, value)
+            arguments
+                this
+                value   (1,1)   double  {mustBePositive}
+            end
+
+            this.frame_rate = value;
         end
 
         function r = get.IsEmpty(this)

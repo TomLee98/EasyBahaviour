@@ -13,6 +13,7 @@ classdef LittleObjectDetector < handle
         Display         % set/get, 1-by-1 string, "on" or "off"
         FeatureSize     % ___/get, 1-by-1 positive integer, the feature dimension
         LabelsOrder     % ___/get, 1-by-n string vector, consistant with posterior probability
+        Loaded          % ___/get, 1-by-1 logical, indicate if classifier is loaded
     end
     
     properties(Access = private)
@@ -94,6 +95,11 @@ classdef LittleObjectDetector < handle
         %% LabelsOrder Getter
         function value = get.LabelsOrder(this)
             value = reshape(string(this.classifier.ClassNames), 1, []);
+        end
+
+        %% Loaded Getter
+        function value = get.Loaded(this)
+            value = (~isempty(this.classifier) && isobject(this.classifier));
         end
     end
 
