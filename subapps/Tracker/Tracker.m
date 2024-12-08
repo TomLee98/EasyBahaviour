@@ -4,17 +4,20 @@ classdef Tracker < handle
 
     properties(Constant, Hidden)
         AVERAGE_TARGET_RECALL = 0.8
+        % MODE = "_DEBUG_"
+        MODE = "_RELEASE_"
     end
     
     properties(Access = private)
-        hLOD            (1,1)   LittleObjectDetector    % LittleObjectDetector object handle
-        hMP             (1,1)   MotionPredictor         % MotionPredictor object handle
-        hOM             (1,1)   ObjectMatcher           % ObjectMatcher object handle
-        keys_lost       (1,1)   dictionary              % string -> double, indicate lost keys continue number
-        keys_stay       (1,1)   dictionary              % mark the keep stayed objects identity -> target posterior
-        obj_prev        (1,1)   dictionary              % previous observed objects
-        time_prev       (1,1)   double                  % previous time stamps, for calculating v, unit as seconds
-        opts            (1,1)   struct                  % Track object options struct
+        hBMC        (1,1)   BayesianMotionClassifier    % BayesianMotionClassifier object handle
+        hLOD        (1,1)   LittleObjectDetector        % LittleObjectDetector object handle
+        hMP         (1,1)   MotionPredictor             % MotionPredictor object handle
+        hOM         (1,1)   ObjectMatcher               % ObjectMatcher object handle
+        keys_lost   (1,1)   dictionary                  % string -> double, indicate lost keys continue number
+        keys_stay   (1,1)   dictionary                  % mark the keep stayed objects identity -> target posterior
+        obj_prev    (1,1)   dictionary                  % previous observed objects
+        opts        (1,1)   struct                      % Track object options struct
+        time_prev   (1,1)   double                      % previous time stamps, for calculating v, unit as seconds
     end
 
     properties(Access = private, Hidden)
@@ -24,16 +27,17 @@ classdef Tracker < handle
     methods
         function this = Tracker(options_)
             arguments
-                options_    (1,1)   struct  = struct("lodopts", struct("classifier", "E:\si lab\Matlab Projects\EasyBehaviour\subapps\Tracker\utils\SVM\classifier_svm.bin", ...
+                options_    (1,1)   struct  = struct("lodopts", struct("classifier", "E:\si lab\Matlab Projects\EasyBehaviour\subapps\Tracker\utils\ObjectDetector\SVM\classifier_svm.bin", ...
                                                                        "alg",        "svm", ...
                                                                        "options",    struct()), ...
-                                                     "mpopts",  struct("KFEnable", true, ...
+                                                     "mpopts",  struct("KFEnable", false, ...
                                                                        "KFWin",    9), ...
                                                      "omopts",  struct("cost", "Jaccard", ...
                                                                        "dist", "Euclidean"), ...
                                                      "tkopts",  struct("target",   "larva", ...
-                                                                       "keeplost", 3, ...
-                                                                       "lastw", 0.618, ...
+                                                                       "mmdl",  MotionModel("Brownian-Gaussian"), ...
+                                                                       "pth",   0.35, ...
+                                                                       "memlen", 10, ...
                                                                        "xRes", 0.1, ... % mm/pixel
                                                                        "yRes", 0.1));
             end
@@ -52,6 +56,14 @@ classdef Tracker < handle
                                        this.opts.mpopts.KFEnable);
             this.hOM = ObjectMatcher(this.opts.omopts.cost, ...
                                      this.opts.omopts.dist);
+
+            mdl = this.opts.tkopts.mmdl;
+            scale = struct("xRes", this.opts.tkopts.xRes, ...
+                           "yRes", this.opts.tkopts.yRes);
+            target = find(this.hLOD.LabelsOrder==this.opts.tkopts.target);
+            lambda = this.opts.tkopts.pth^(1/(this.opts.tkopts.memlen+1));
+
+            this.hBMC = BayesianMotionClassifier(mdl, scale, target, lambda);
         end
 
         function delete(this)
@@ -65,7 +77,7 @@ classdef Tracker < handle
             % Input:
             %   - frame: 1-by-2 cell array, with {image, time}
             % Output:
-            %   - boxes: 1-by-1 dictionary, identity(string) -> location(1-by-4 double, [x,y,w,h])
+            %   - boxes: 1-by-1 dictionary, identity(string) -> locatedprob(1-by-5 double, [x,y,w,h,p])
             %   - gcs: 1-by-1 dictionary, identity(string) -> mass center(1-by-2 double, [x,y])
             arguments
                 this
@@ -74,186 +86,70 @@ classdef Tracker < handle
 
             %% Detect Objects from Current Frame
             t_cur = frame{2};
-            obj_observed = this.hLOD.detect(frame{1});  % {boxes, posterior}
 
             duration_sec = [this.time_prev, t_cur];
-            
-            %% Match observed and predicted
-            A = Tracker.MakeA(duration_sec);
+            this.time_prev = t_cur;
+
+            % note that posterior as prior when moving detection
+            obj_observed = this.hLOD.detect(frame{1});  % {boxes, posterior}
+
+            %% Predict Current Object Locations by MotionPredictor
+            A = Tracker.MakeA(diff(duration_sec));
 
             if this.isTrackingInit
                 % use observed replaced previous at initialized
-                Y = Tracker.TransFromObserved(obj_observed);
+                this.obj_prev = Tracker.TransFromObserved(obj_observed);    % {[boxes; velocity_boxes]}
+                this.isTrackingInit = false;
             else
-                Y = Tracker.TransFromObserved(this.obj_prev);
+                % updated previously
             end
 
-            obj_predicted = this.hMP.predict(A, Y);     % {[boxes, velocity_boxes]}
-            obj_predicted = Tracker.ExtractLocationsIn(obj_predicted);  % [boxes]
-            obj_obs_prior = Tracker.ExtractLocationsIn(obj_observed);
+            % predict current locations by KF filter and obj_prev
+            obj_predicted = this.hMP.predict(A, this.obj_prev);         % {[boxes; velocity_boxes]}
+            obj_pdt_prior = Tracker.ExtractLocationsIn(obj_predicted);  % [boxes]
+            obj_obs_prior = Tracker.ExtractLocationsIn(obj_observed);   % [boxes]
 
-            % match predicted and observed
-            [id_matched, id_new, id_lost, ~] = this.hOM.match(obj_predicted, obj_obs_prior);
+            %% Match Observed and Predicted Objects by ObjectMatcher
+            [id_matched, id_new, id_lost, ~] = this.hOM.match(obj_pdt_prior, obj_obs_prior);
 
-            %% Pre-Filtered the objects may not be moving
-            if ~this.isTrackingInit
-                % validate objects in id_matched set, modify obj_predicted set
-                obj_pdt_post = configureDictionary("string", "cell");
-                for k = 1:numel(id_matched.predicted)
-                    % rename for compared with observed
-                    obj_pdt_post(id_matched.predicted(k)) ...
-                        = obj_predicted(id_matched.predicted(k));
-                end
+            %% Distribute 'Target' (Dynamic) Posterior on each object
+            [boxes, this.obj_prev] = this.hBMC.reEstimate(this.obj_prev, ...
+                                                          obj_pdt_prior, ...
+                                                          obj_observed, ...
+                                                          id_matched, ...
+                                                          id_new, ...
+                                                          id_lost, ...
+                                                          diff(duration_sec));
 
-                obj_predicted = generatePredictedVars(this, ...
-                                                      obj_pdt_post, ...
-                                                      obj_observed, ...
-                                                      id_matched, ...
-                                                      duration_sec);
-            else
-                % do nothing
-            end
-
-            obj_obs_prior = Tracker.ExtractLocationsIn(obj_observed);        % [boxes]
-            %% Predict current objects location by previous observed
-            % handle the cost in memory, until overflow memory size
-            for k = 1:numel(id_lost.predicted)
-                key = id_lost.predicted(k);
-                if this.keys_lost.isKey(key)
-                    this.keys_lost(key) = this.keys_lost(key) + 1;
-
-                    % over memory capacity, may lost forever
-                    if this.keys_lost(key) > this.opts.tkopts.keeplost
-                        this.keys_lost(key) = [];
-                        obj_predicted(key) = [];    % also remove from predicted set
+            %% Remove 'Targets' with Posterior Lower than Threshold
+            boxkeys = boxes.keys("uniform")';
+            switch this.MODE
+                case "_DEBUG_"
+                    for key = boxkeys
+                        % append v for debugging
+                        vvec = this.obj_prev{key}(BayesianMotionClassifier.LOCFEATURES_N+1:end);
+                        boxes{key} = [boxes{key}, sqrt(sum(vvec.^2))];
                     end
-                else
-                    this.keys_lost(key) = 1;    % init lost
-                end
+                otherwise
+                    for key = boxkeys
+                        % remove objects in boxes
+                        if boxes{key}(end) < this.opts.tkopts.pth
+                            boxes(key) = [];
+                            % this.obj_prev(key) = [];    %! keep obj_prev to avoid erase-flush
+                        end
+                    end
             end
 
-            % boxes with matched, new and lost
-            % replace matched observed identities with predicted identities
-            boxes = configureDictionary("string", "cell");
-            for k = 1:numel(id_matched.predicted)
-                boxes(id_matched.predicted(k)) = obj_obs_prior(id_matched.observed(k));
-            end
-
-            % insert new identities
-            for k = 1:numel(id_new)
-                boxes(id_new.observed(k)) = obj_obs_prior(id_new.observed(k));
-            end
-
-            % keep some losted boxes
-            for key = this.keys_lost.keys("uniform")'
-                boxes(key) = obj_predicted(key);
-            end
-
+            %% Output Simplified Geometric Centers
             gcs = Parameterizer.GetGeometricCenters(frame{1}, boxes);
-
-            % update memory
-            updateMemory(this, boxes, t_cur);
-        end
-    end
-
-    methods (Access = private)
-        function obj_pdt = generatePredictedVars(this, obj_prev, obj_cur, id_mapping, timev, pth)
-            arguments
-                this    
-                obj_prev    (1,1)   dictionary      % id -> [x,y,w,h]'
-                obj_cur     (1,1)   dictionary      % id -> {{[x,y,w,h]}, {[posterior]}}
-                id_mapping  (:,2)   table           % [predicted, observed]
-                timev       (1,2)   double      {mustBeNonnegative}    % [tprev, tcur]
-                pth         (1,1)   double      {mustBeInRange(pth, 0, 1)} = 0.5
-            end
-
-            prior_index = (this.hLOD.LabelsOrder==this.opts.tkopts.target);
-
-            % estimate previous objects velocity
-            prev_keys = obj_prev.keys("uniform")';
-            obj_pdt = configureDictionary("string", "cell");
-
-            for key = prev_keys
-
-                bbox_prev = obj_prev{key};
-                bbox_prev(1) = bbox_prev(1)+bbox_prev(3)/2; bbox_prev(2) = bbox_prev(2)+bbox_prev(4)/2;
-
-                % estimate the object previous speed
-                key_obs = id_mapping.observed(id_mapping.predicted==key);
-                if obj_cur.isKey(key_obs)
-                    % use 1st-order back difference estimate velocity
-                    bbox_cur = obj_cur{key_obs}{1}';
-                    bbox_cur(1) = bbox_cur(1) + bbox_cur(3)/2; bbox_cur(2) = bbox_cur(2) + bbox_cur(4)/2;
-                    obj_prior = obj_cur{key_obs}{2}(prior_index);    % use classified results as prior
-                    vobs = (bbox_cur - bbox_prev)/diff(timev) ...
-                        .*  sqrt(this.opts.tkopts.xRes*this.opts.tkopts.yRes);  % average fluctuation speed;
-                else
-                    % nothing could estimate the objct speed at previous
-                    % time stamp, set as zero
-                    obj_prior = this.AVERAGE_TARGET_RECALL;
-                    vobs = zeros(size(bbox_prev));
-                end
-
-                % detect target is moving as default, otherwise,
-                % another posterior = 1 - posterior
-                rvobs = sqrt(sum(vobs.^2));
-                posterior = Tracker.BayesianEstimateMoving(rvobs, obj_prior);
-
-                if this.keys_stay.isKey(key)
-                    posterior = this.opts.tkopts.lastw*this.keys_stay(key) ...
-                        + (1-this.opts.tkopts.lastw)*posterior;
-                else
-                    posterior = this.opts.tkopts.lastw*obj_prior ...
-                        + (1-this.opts.tkopts.lastw)*posterior;
-                end
-                this.keys_stay(key) = posterior;
-
-                if posterior > pth
-                    % decide as moving target, output target
-                    obj_pdt{key} = {bbox_prev, vobs};
-                else
-                    % skip this object
-                end
-            end
-        end
-
-        function updateMemory(this, observed_post, t)
-            arguments
-                this
-                observed_post   (1,1)   dictionary
-                t               (1,1)   double      {mustBeNonnegative}
-            end
-
-            this.obj_prev = configureDictionary("string", "cell");
-
-            for key = observed_post.keys("uniform")'
-                if (this.keys_stay.numEntries > 0) && this.keys_stay.isKey(key)
-                    posterior_est = zeros(1, numel(this.hLOD.LabelsOrder));
-                    typei = regexp(key, "[a-z]*", "match");
-                    posterior_est(this.hLOD.LabelsOrder==typei) = this.keys_stay(key);
-                    posterior_est(this.hLOD.LabelsOrder~=this.opts.tkopts.target) ...
-                        = (1 - this.keys_stay(key))/sum(this.hLOD.LabelsOrder~=this.opts.tkopts.target);
-                else
-                    posterior_est = zeros(1, numel(this.hLOD.LabelsOrder));
-                    typei = regexp(key, "[a-z]*", "match");
-                    posterior_est(this.hLOD.LabelsOrder==typei) = 1;
-                end
-                this.obj_prev{key} = {observed_post{key}', posterior_est};
-            end
-
-            this.time_prev = t;
-
-            this.isTrackingInit = false;
         end
     end
 
     methods(Static, Hidden)
-        function A = MakeA(timev)
+        function A = MakeA(dt)
             arguments
-                timev    (1,2)   double
+                dt    (1,1)   double    {mustBePositive}
             end
-
-            dt = diff(timev);       % seconds
 
             A = [1, 0, 0, 0, dt,  0,  0,  0;    % [x]
                  0, 1, 0, 0,  0, dt,  0,  0;    % [y]
@@ -291,37 +187,6 @@ classdef Tracker < handle
                 end
             end
         end
-
-        function pp = BayesianEstimateMoving(vobs, pm, s0, v1, s1)
-            % This function use bayesian estimate posterior prabability for
-            % object is moving
-            % Input:
-            %   - s0:
-            %   - v1:
-            %   - s1:
-            %   - pm:
-            %   - vobs
-            % Output:
-            %   - pp:
-            arguments
-                vobs    (1,1)   double  {mustBeNonnegative}
-                pm      (1,1)   double  {mustBeInRange(pm, 0, 1)}
-                s0      (1,1)   double  {mustBePositive}            = 0.15  % prior, mm/s
-                v1      (1,1)   double  {mustBeNonnegative}         = 0.5   % prior, mm/s
-                s1      (1,1)   double  {mustBePositive}            = 0.1  % prior, mm/s
-            end
-
-            % 1-D cutoff gaussian distribution
-            p_v_moving = (normpdf(vobs, v1, s1) - normpdf(0, v1, s1)) ...
-                /(1/sqrt(2*pi*s1^2) - normpdf(0, v1, s1));
-
-            % 4-D Maxwell-Boltzmann distribution
-            p_v_shift = vobs^3/(3*pi*s0^4)*exp(-vobs^2/(2*s0^2));   
-
-            % Bayesian continues formation
-            pp = p_v_moving*pm/(p_v_moving*pm + p_v_shift*(1-pm) + eps);
-        end
-        
     end
 end
 

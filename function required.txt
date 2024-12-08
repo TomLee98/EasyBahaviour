@@ -16,18 +16,28 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs] Fix bug if VCSL code invalid loop (nan, inf, etc) 
   |     |- [Fix Bugs] TCamera ROI/Binning Setting when connected
   |     |- [Fix Bugs] memory overflow after running: mQueue with objects
-  |- V1.2       2024/11/30
+  |- V1.2       2024/12/09
   |     |- [Update] Add 'LittleObjectDetector'
-  |     |- [Update] Add 'MotionPredictor'
+  |     |- [Update] Add 'MotionPredictor' (without useful Kalman Filter)
   |     |- [Update] Add 'ObjectMatcher'
-  |     |- [Update] Add 'Tracker' (SORT Algorithm)
+  |     |- [Update] Add 'Tracker' (SORT Algorithm with Bayesian Corrector)
   |     |- [Update] Add 'Manual Panel Control' on HardwareConfiguration "Test"
+  |     |- [Update] TODO: Add 'Export Video'
+  |     |- [Update] TODO: Add long-time recording support (saving to disk realtime)
   |     |- [Fix Bugs] free camera allocated memory when running new experiment
   |     |- [Fix Bugs] TODO: free memory correctly after closing
+  |     |- [Fix Bugs] TODO: 'outer' mode with bad synchronous and possible "break down"
+  |     |- [Note] Tracker uses machine learning(SVM for object detection), or we can try 
+  |     |           deep learning(yoloX) for little objects detection as  side-by-side solution
+  |     |- [Note] Tracker: different from multiObjectTracker in Automated Driving Toolbox, 
+  |     |           we use Bayesian estimator as corrector and replace hard memory length with 
+  |     |           posterior probability  to  control 'unssignedTracks'(lost) boxes
+  |     |- [Note] Tracker: inner motion predictor we use linear Kalman Filter as 
+  |     |         same as Automated Driving Toolbox under 'constant velocity' motion model
   |- V1.3       2024/11
+  |     |- [Update] TODO: Add 'double Kalman Filter' for better prediction
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
-  |     |- [Update] TODO: Add long-time recording support (saving to disk realtime)
   |     |- [Fix Bugs]
   |- V1.3       2024/12/
   |     |- [Update] TODO: Preference Options support: <appearence>
@@ -44,7 +54,6 @@ V1          Archimedes        阿基米德
   |     |- [Fix Bugs]
   |- V1.6       2024/12
   |     |- [Update] TODOl full function video player support
-  |     |- [Update] TODO: Add 'Export Video'
   |     |- [Fix Bugs]
   #     #
 
@@ -63,18 +72,4 @@ V2          Tesla           特斯拉
 
 
 ========================== Technique Stack ===========================
-NOTE: real-time tracking 
-[1] detector
-    (a) feature detection (SIFT, SURF, HOG, ...)
-    (b) feature mixture
-    (c) PCA decrease dimension
-    (d) SVM classifier (foreground, background)
-
-[2] predictor
-    (a) Kalman filter
-
-[3] matching
-    (a) KM algorithm
-
-
 NOTE: parameterization

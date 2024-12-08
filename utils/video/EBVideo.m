@@ -1,5 +1,10 @@
 classdef EBVideo < handle
     %EBVIDEO This is video defination
+
+    properties(Access = public, Dependent)
+        IsEmpty
+        Mode
+    end
     
     properties(Access = private, Hidden)
         video_frames    (1,1)   mQueue
@@ -38,6 +43,14 @@ classdef EBVideo < handle
                     this.video_frames.enqueue(frames_(k));
                 end
             end
+        end
+
+        function r = get.IsEmpty(this)
+            r = (numel(this.video_frames) == 0);
+        end
+
+        function r = get.Mode(this)
+            r = this.mode;
         end
 
         function delete(this)

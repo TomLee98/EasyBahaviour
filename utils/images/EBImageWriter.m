@@ -39,7 +39,7 @@ classdef EBImageWriter < handle
    methods (Access = public)
        function write(this)
            if this.dataset.IsEmpty
-               warning("ImageWriter:noImagestoWrite", ...
+               warning("EBImageWriter:noImagestoWrite", ...
                    "No images could be written.");
                return;
            end

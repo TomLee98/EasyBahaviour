@@ -1,0 +1,8 @@
+Project code protocal: 
+- <class>: first letter upper case
+- <method>: camel case
+- <constant>: full upper case with underline as splitter
+- <variable> 
+    - <temporary variable>: lower case with underline as splitter
+    - <function parameter>: camel case
+- <dependent>: first letter upper case

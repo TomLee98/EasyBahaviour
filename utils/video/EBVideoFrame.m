@@ -4,7 +4,7 @@ classdef EBVideoFrame < handle
     % generate as value object
 
     properties(GetAccess = public, Dependent)
-        DetectBoxes         % ___/get, 1-by-1 dictionary, identity |-> location, [OffsetX, OffsetY, Width, Height]
+        DetectBoxes         % ___/get, 1-by-1 dictionary, identity |-> location, [OffsetX, OffsetY, Width, Height, PostPrab]
         GeometricCenters    % ___/get, 1-by-1 dictionary, identity |-> location, [PositionX, PositionY]
         ImageData           % ___/get, m-by-n uint8/uint16 image data
         MetaData            % ___/get, 1-by-1 string, command code, such as "A&B"
@@ -15,7 +15,7 @@ classdef EBVideoFrame < handle
 
     
     properties(SetAccess = immutable, GetAccess = private)
-        detect_boxes        (1,1)   dictionary  % [OffsetX, OffsetY, Width, Height]
+        detect_boxes        (1,1)   dictionary  % [OffsetX, OffsetY, Width, Height, PostPrab]
         geometric_centers   (1,1)   dictionary  % [PositionX, PositionY]
         image_data          (:,:)               % image data
         meta_data           (1,1)   string      % command code, such as "A&B"
