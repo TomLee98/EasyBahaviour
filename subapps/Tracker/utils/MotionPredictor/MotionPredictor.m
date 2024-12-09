@@ -13,6 +13,7 @@ classdef MotionPredictor < handle
         KFPredictedObjects  % ___/get, n-by-1 string vector, identity of objects predicted by KF
         KFWindowSize        % ___/get, 1-by-1 positive integer, indicate Kalman Filter Initialized Window Size
         Objects             % ___/get, m-by-1 string vector, identity of total objects
+        SmoothMethod        % set/get, 1-by-1 string, could be ["EWMA", "UWMA"]
         SmoothWindowSize    % set/get, 1-by-1 positive integer, indicate smoothing window size
     end
     
@@ -80,6 +81,20 @@ classdef MotionPredictor < handle
         %% Objects Getter
         function value = get.Objects(this)
             value = this.isInit.keys("uniform");
+        end
+
+        %% SmoothMethod Getter & Setter
+        function value = get.SmoothMethod(this)
+            value = this.sa;
+        end
+
+        function set.SmoothMethod(this, value)
+            arguments
+                this
+                value   (1,1)   string  {mustBeMember(value, ["EWMA", "UWMA"])}
+            end
+
+            this.sa = value;
         end
 
         %% SmoothWindowSize Getter & Setter

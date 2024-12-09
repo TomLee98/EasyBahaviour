@@ -20,13 +20,10 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add 'LittleObjectDetector'
   |     |- [Update] Add 'MotionPredictor' (without useful Kalman Filter)
   |     |- [Update] Add 'ObjectMatcher'
-  |     |- [Update] Add 'Tracker' (SORT Algorithm with Bayesian Corrector)
   |     |- [Update] Add 'Manual Panel Control' on HardwareConfiguration "Test"
-  |     |- [Update] TODO: Add 'Export Video'
-  |     |- [Update] TODO: Add long-time recording support (saving to disk realtime)
+  |     |- [Update] Add 'Export Video'
   |     |- [Fix Bugs] free camera allocated memory when running new experiment
-  |     |- [Fix Bugs] TODO: free memory correctly after closing
-  |     |- [Fix Bugs] TODO: 'outer' mode with bad synchronous and possible "break down"
+  |     |- [Fix Bugs] free memory correctly after closing
   |     |- [Note] Tracker uses machine learning(SVM for object detection), or we can try 
   |     |           deep learning(yoloX) for little objects detection as  side-by-side solution
   |     |- [Note] Tracker: different from multiObjectTracker in Automated Driving Toolbox, 
@@ -34,25 +31,23 @@ V1          Archimedes        阿基米德
   |     |           posterior probability  to  control 'unssignedTracks'(lost) boxes
   |     |- [Note] Tracker: inner motion predictor we use linear Kalman Filter as 
   |     |         same as Automated Driving Toolbox under 'constant velocity' motion model
-  |- V1.3       2024/11
+  |- V1.3       2024/12
+  |     |- [Update] TODO: Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
+  |     |- [Update] TODO: Add long-time recording support (saving to disk realtime)
   |     |- [Update] TODO: Add 'double Kalman Filter' for better prediction
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
-  |     |- [Fix Bugs]
-  |- V1.3       2024/12/
+  |     |- [Fix Bugs] TODO: 'outer' mode with bad synchronous and possible "break down"
+  |- V1.4       2025/
   |     |- [Update] TODO: Preference Options support: <appearence>
   |     |- [Update] TODO: Add Beightness/Contrast
   |     |- [Update] TODO: Add Scale
   |     |- [Fix Bugs]
-  |- V1.4       2024/12
-  |     |- [Update] TODO: Add 'Update' function
-  |     |- [Update] TODO: Add 'Multi-Languages' support
-  |     |- [Fix Bugs]
-  |- V1.5       2024/12
+  |- V1.5       2025/
   |     |- [Update] TODO: Add manual trigger
   |     |- [Update] TODO: Add palette function
   |     |- [Fix Bugs]
-  |- V1.6       2024/12
+  |- V1.6       2025/
   |     |- [Update] TODOl full function video player support
   |     |- [Fix Bugs]
   #     #
