@@ -29,7 +29,7 @@ classdef EBVideoWriter < handle
             this.markers = markers;
             this.sblen = sbarlen;
             
-            this.frame_fig = figure("Name", "FrameGrabber","Visible","off");
+            this.frame_fig = figure("Name", "FrameGrabber","Visible","on");
             axes(this.frame_fig);
 
             warning("off", 'MATLAB:audiovideo:VideoWriter:mp4FramePadded');
@@ -161,12 +161,17 @@ classdef EBVideoWriter < handle
 
             % gs_use = this.info.UseGrayscale;    % enable if RGB image is valid
 
+            output_size = [this.info.OutputHeight, this.info.OutputWidth];
+            rs_use = any(output_size ~= size(frame.ImageData));
+
             %% Export raw image
             open(vid);  % open file with fixed properties
             for fidx = 1:this.video.Size
                 [img, ~] = this.video.GetFrame(this, fidx);
 
                 % if gs_use, img = rgb2gray(img); end
+
+                if rs_use, img = imresize(img, output_size, this.info.Interpolation); end
 
                 writeVideo(vid, img);
                 this.prgs = fidx / this.video.Size;
@@ -192,7 +197,10 @@ classdef EBVideoWriter < handle
 
             spr = vid.FrameRate / this.video.FrameRate;
 
-            initComponentsOn(ax);
+            initComponentsOn(ax, size(frame.ImageData, [2,1]));
+
+            output_size = [this.info.OutputHeight, this.info.OutputWidth];
+            rs_use = any(output_size ~= size(frame.ImageData));
 
             %% Export Image with markers
             open(vid);
@@ -208,6 +216,8 @@ classdef EBVideoWriter < handle
                 fframe = getframe(ax);
 
                 if gs_use, fframe.cdata = rgb2gray(fframe.cdata); end
+
+                if rs_use, fframe.cdata = imresize(fframe.cdata, output_size, this.info.Interpolation); end
 
                 writeVideo(vid, fframe);
 

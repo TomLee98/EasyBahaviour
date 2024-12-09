@@ -301,7 +301,7 @@ classdef EBKernel < handle
             this.npcs_frames = 0;
 
             %% Configure analysis tools
-            this.tracker = Tracker(this.options.TrackerOptions);
+            this.tracker = Tracker();
             this.parameterizer = Parameterizer(this.options.ParameterizerOptions);
             this.pfanalyzer = PopulationAnalyzer(this.options.PopulationOptions);
 
@@ -329,7 +329,7 @@ classdef EBKernel < handle
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
                     % track followed, parallel
-                    [boxes, gcs] = this.tracker.Track(frame);
+                    [boxes, gcs] = this.tracker.track(frame);
                     
                     if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
                         % parameterize followed, parallel
@@ -356,6 +356,10 @@ classdef EBKernel < handle
             end
 
             %% Post process variables
+
+            % modify video frame rate
+            frame_last = this.videos.GetLastFrame();
+            this.videos.FrameRate = this.videos.FramesNum / frame_last.TimeStamp;
             
             % free
             delete(this.tracker);

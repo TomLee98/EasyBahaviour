@@ -27,7 +27,7 @@ classdef Tracker < handle
     methods
         function this = Tracker(options_)
             arguments
-                options_    (1,1)   struct  = struct("lodopts", struct("classifier", "E:\si lab\Matlab Projects\EasyBehaviour\subapps\Tracker\utils\ObjectDetector\SVM\classifier_svm.bin", ...
+                options_    (1,1)   struct  = struct("lodopts", struct("classifier", "D:\EasyBehaviour\subapps\Tracker\utils\ObjectDetector\SVM\classifier_svm.bin", ...
                                                                        "alg",        "svm", ...
                                                                        "options",    struct()), ...
                                                      "mpopts",  struct("KFEnable", false, ...
@@ -59,6 +59,18 @@ classdef Tracker < handle
 
     methods(Access = public)
         function [boxes, gcs] = track(this, frame)
+            arguments
+                this
+                frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
+            end
+
+            boxes = dictionary();
+            gcs = dictionary();
+
+            pause(0.4);
+        end
+
+        function [boxes, gcs] = track_(this, frame)
             % This function implements "SORT" algorithm for object tracking
             % Input:
             %   - frame: 1-by-2 cell array, with {image, time}
