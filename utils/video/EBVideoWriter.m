@@ -168,7 +168,7 @@ classdef EBVideoWriter < handle
             %% Export raw image
             open(vid);  % open file with fixed properties
             for fidx = 1:this.video.Size
-                [img, ~] = this.video.GetFrame(this, fidx);
+                [img, ~] = this.video.GetFrame(fidx);
 
                 % if gs_use, img = rgb2gray(img); end
 
