@@ -6,9 +6,9 @@ classdef EBVideoWriter < handle
     end
     
     properties(Access = private)
-        frame_fig   (1,1)   Figure
+        frame_fig   (1,1)
         info        (1,1)   struct
-        matkers     (1,1)   struct
+        markers     (1,1)   struct
         prgs        (1,1)   double  = 0
         sblen       (1,1)   double
         video       (1,1)           % could be EBImages or EBVideo object 
@@ -26,10 +26,13 @@ classdef EBVideoWriter < handle
 
             this.video = source;
             this.info = options;
-            this.matkers = markers;
+            this.markers = markers;
             this.sblen = sbarlen;
             
-            this.frame_fig = figure("Name", "FrameGrabberWindow","Visible","off");
+            this.frame_fig = figure("Name", "FrameGrabber","Visible","off");
+            axes(this.frame_fig);
+
+            warning("off", 'MATLAB:audiovideo:VideoWriter:mp4FramePadded');
         end
 
         function value = get.WrittingProgress(this)
@@ -38,6 +41,11 @@ classdef EBVideoWriter < handle
         
         function delete(this)
             % ~
+            if isvalid(this.frame_fig)
+                close(this.frame_fig);
+            end
+
+            warning("on", 'MATLAB:audiovideo:VideoWriter:mp4FramePadded');
         end
     end
 
@@ -50,19 +58,27 @@ classdef EBVideoWriter < handle
             end
 
             switch this.info.OutputFormat
-                case {'Motion JPEG 2000', 'Archival'}
-                    [file, path, indx] = uiputfile({'*.mj2',  'Motion JPEG 2000 (*.mj2)'; ...
-                        '*.mj2',  'Uncompressed Motion MPEG 2000 (*.mj2)'}, ...
+                case "Motion JPEG 2000"
+                    [file, path] = uiputfile({'*.mj2',  'Motion JPEG 2000 (*.mj2)'}, ...
+                        "导出视频", "captured.mj2");
+                case "Archival"
+                    [file, path] = uiputfile({'*.mj2',  'Uncompressed Motion MPEG 2000 (*.mj2)'}, ...
                         "导出视频", "captured.mj2");
                 case "MPEG-4"
                     [file, path] = uiputfile({'*.mp4',  'MPEG-4 (*.mp4)'}, ...
                         "导出视频", "captured.mp4");
-                case {'Motion JPEG AVI', 'Grayscale AVI'}
-                    [file, path, indx] = uiputfile({'*.avi', 'Motion JPEG AVI(*.avi)'; ...
-                        '*.avi', 'Uncompressed Grayscale AVI (*.avi)'}, ...
+                case "Motion JPEG AVI"
+                    [file, path] = uiputfile({'*.avi', 'Motion JPEG AVI(*.avi)'}, ...
+                        "导出视频", "captured.avi");
+                case "Grayscale AVI"
+                    [file, path] = uiputfile({'*.avi', 'Uncompressed Grayscale AVI (*.avi)'}, ...
+                        "导出视频", "captured.avi");
+                case "Uncompressed AVI"
+                    [file, path] = uiputfile({'*.avi', 'Uncompressed RGB AVI (*.avi)'}, ...
                         "导出视频", "captured.avi");
                 otherwise
-
+                    throw(MException("EBVideoWriter:invalidOutputFormat", ...
+                        "Unsupported video format."));
             end
 
             if ~isnumeric(file)
@@ -73,9 +89,9 @@ classdef EBVideoWriter < handle
                    case ".mp4"
                        saveAsMP4(this, file);
                    case ".avi"
-                       saveAsAVI(this, file, indx);
+                       saveAsAVI(this, file);
                    case ".mj2"
-                       saveAsMJ2(this, file, indx);
+                       saveAsMJ2(this, file);
                    otherwise
                end
             end
@@ -86,67 +102,118 @@ classdef EBVideoWriter < handle
         function saveAsMP4(this, file)
             vid = VideoWriter(file, "MPEG-4");
             vid.Quality = this.info.RenderingQuality;
+            
+            saveVideo(this, vid);
+        end
+
+        function saveAsAVI(this, file)
+            switch this.info.OutputFormat
+                case "Motion JPEG AVI"
+                    % motion jpeg avi: compressed
+                    vid = VideoWriter(file, "Motion JPEG AVI");
+                    vid.Quality = this.info.RenderingQuality;
+                case "Grayscale AVI"
+                    % grayscale avi: uncompressed
+                    vid = VideoWriter(file, "Grayscale AVI");
+                case "Uncompressed AVI"
+                    vid = VideoWriter(file, "Uncompressed AVI");
+                otherwise
+                    throw(MException("EBVideoWriter:invalidOutputFormat", ...
+                        "Only Motion JPEG AVI and Grayscale AVI are supported."));
+            end
+
+            saveVideo(this, vid);
+        end
+
+        function saveAsMJ2(this, file)
+            switch this.info.OutputFormat
+                case "Motion JPEG 2000"
+                    vid = VideoWriter(file, "Motion JPEG 2000");
+                    vid.CompressionRatio = this.info.CompressionRatio;
+                case "Archival"
+                    vid = VideoWriter(file, "Archival");
+                otherwise
+                    throw(MException("EBVideoWriter:invalidOutputFormat", ...
+                        "Only Motion JPEG AVI and Grayscale AVI are supported."));
+            end
+
+            saveVideo(this, vid);
+        end
+
+        function saveVideo(this, vid)
             if isequal(class(this.video), "EBImages")
-                if this.info.FrameRateSync == false
-                    vid.FrameRate = this.info.OutputFrameRate;
-                else
-                    [~, t] = this.video.GetLastFrame();
-                    vid.FrameRate = t/this.video.Size;
-                end
-                %% Export raw image
-                open(vid);  % open file with fixed properties
-                for fidx = 1:this.video.Size
-                    [img, ~] = this.video.GetFrame(this, fidx);
-                    writeVideo(vid, img);
-                    this.prgs = fidx / this.video.Size;
-                end
-                close(vid);
-                
+                saveForEBImages(this, vid);
             elseif isequal(class(this.video), "EBVideo")
-                vid.FrameRate = this.video.FrameRate;
-
-                %% Display Image on Figure
-                frame = this.video.GetFrame(1); % get first frame: EBVideoFrame object
-
-                hIm = imshow(zeros(size(frame.ImageData), "like", frame.ImageData), ...
-                    "Parent", this.frame_fig);
-                ax = this.frame_fig.CurrentAxes;
-                spr = this.info.OutputFrameRate / this.video.FrameRate;
-
-                initComponentsOn(ax);
-
-                %% Export Image with markers
-                open(vid);
-                for fidx = 1:this.video.FramesNum
-                    % display image
-                    frame = GetFrame(this, fidx);
-                    hIm.CData = frame.ImageData;
-
-                    % update markers
-                    updateComponentsOn(ax, frame, this.matkers, this.sblen, spr);
-
-                    % grab frames and write
-                    frame = getframe(this.frame_fig);
-
-                    writeVideo(vid, frame);
-
-                    this.prgs = fidx / this.video.Size;
-                end
-                close(vid);
+                saveForEBVideo(this, vid);
             else
                 throw(MException("EBVideoWriter:invalidSourceType", ...
                     "EBVideoWriter only support EBVideo or EBImages."));
             end
-            
         end
 
-        function saveAsAVI(this, file, type)
+        function saveForEBImages(this, vid)
+            if this.info.FrameRateSync == false
+                vid.FrameRate = this.info.OutputFrameRate;
+            else
+                [~, t] = this.video.GetLastFrame();
+                vid.FrameRate = t/this.video.Size;
+            end
 
+            % gs_use = this.info.UseGrayscale;    % enable if RGB image is valid
+
+            %% Export raw image
+            open(vid);  % open file with fixed properties
+            for fidx = 1:this.video.Size
+                [img, ~] = this.video.GetFrame(this, fidx);
+
+                % if gs_use, img = rgb2gray(img); end
+
+                writeVideo(vid, img);
+                this.prgs = fidx / this.video.Size;
+            end
+            close(vid);
         end
 
-        function saveAsMJ2(this, file, type)
+        function saveForEBVideo(this, vid)
+            if this.info.FrameRateSync == true
+                vid.FrameRate = this.video.FrameRate;
+            else
+                vid.FrameRate = this.info.OutputFrameRate;
+            end
 
+            gs_use = this.info.UseGrayscale;
+
+            %% Display Image on Figure
+            frame = this.video.GetFrame(1); % get first frame: EBVideoFrame object
+
+            ax = this.frame_fig.CurrentAxes;
+            hIm = imshow(zeros(size(frame.ImageData), "like", frame.ImageData), ...
+                [0, 4096], "Parent", ax);
+
+            spr = vid.FrameRate / this.video.FrameRate;
+
+            initComponentsOn(ax);
+
+            %% Export Image with markers
+            open(vid);
+            for fidx = 1:this.video.FramesNum
+                % display image
+                frame = this.video.GetFrame(fidx);
+                hIm.CData = frame.ImageData;
+
+                % update markers
+                updateComponentsOn(ax, frame, this.markers, this.sblen, spr);
+
+                % grab frames and write
+                fframe = getframe(ax);
+
+                if gs_use, fframe.cdata = rgb2gray(fframe.cdata); end
+
+                writeVideo(vid, fframe);
+
+                this.prgs = fidx / this.video.FramesNum;
+            end
+            close(vid);
         end
     end
 end
-

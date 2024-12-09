@@ -2,7 +2,8 @@ function [hTime, hScale, hSpeed, hMeta, hBoxes, hTrace] = initComponentsOn(ax, v
 %INITCOMPONENTSON This function create components on given ax
 % ax should be uiaxes or axes object handle
 
-if ~exist("ax", "var") || isempty(ax) || (~isa(ax, "UIAxes")&&~isa(ax,"Axes")) 
+if ~exist("ax", "var") || isempty(ax) || ...
+        (~isa(ax, "matlab.ui.control.UIAxes")&&~isa(ax,"matlab.graphics.axis.Axes")) 
     figure; %
     ax = gca;
 end
