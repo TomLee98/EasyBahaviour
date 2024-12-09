@@ -161,8 +161,9 @@ classdef EBVideoWriter < handle
 
             % gs_use = this.info.UseGrayscale;    % enable if RGB image is valid
 
+            [img, ~] = this.video.GetLastFrame();
             output_size = [this.info.OutputHeight, this.info.OutputWidth];
-            rs_use = any(output_size ~= size(frame.ImageData));
+            rs_use = any(output_size ~= size(img));
 
             %% Export raw image
             open(vid);  % open file with fixed properties
