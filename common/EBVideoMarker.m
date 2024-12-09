@@ -1,4 +1,4 @@
-classdef EBVideoMarker < handle
+classdef EBVideoMarker
     %EBVIDEOMARKER 
 
     properties(GetAccess = public)
