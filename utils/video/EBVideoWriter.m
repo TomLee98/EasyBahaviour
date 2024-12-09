@@ -156,10 +156,10 @@ classdef EBVideoWriter < handle
                 vid.FrameRate = this.info.OutputFrameRate;
             else
                 [~, t] = this.video.GetLastFrame();
-                vid.FrameRate = t/this.video.Size;
+                vid.FrameRate = this.video.Size/t;
             end
 
-            % gs_use = this.info.UseGrayscale;    % enable if RGB image is valid
+            gs_use = this.info.UseGrayscale;    % enable if RGB image is valid
 
             [img, ~] = this.video.GetLastFrame();
             output_size = [this.info.OutputHeight, this.info.OutputWidth];
@@ -170,11 +170,16 @@ classdef EBVideoWriter < handle
             for fidx = 1:this.video.Size
                 [img, ~] = this.video.GetFrame(fidx);
 
-                % if gs_use, img = rgb2gray(img); end
+                img = uint8(rescale(img, 0, 255));
 
+                % change to RGB/uint8
+                if ~gs_use, img = cat(3, img, img, img); end
+
+                % resize
                 if rs_use, img = imresize(img, output_size, this.info.Interpolation); end
 
                 writeVideo(vid, img);
+
                 this.prgs = fidx / this.video.Size;
             end
             close(vid);
