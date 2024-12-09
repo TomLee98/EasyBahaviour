@@ -29,7 +29,7 @@ classdef EBVideoWriter < handle
             this.markers = markers;
             this.sblen = sbarlen;
             
-            this.frame_fig = figure("Name", "FrameGrabber","Visible","on");
+            this.frame_fig = figure("Name", "FrameGrabber","Visible","off");
             axes(this.frame_fig);
 
             warning("off", 'MATLAB:audiovideo:VideoWriter:mp4FramePadded');
