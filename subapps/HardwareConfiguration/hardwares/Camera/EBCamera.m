@@ -12,6 +12,7 @@ classdef EBCamera < handle
         iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
         start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
         start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time
+        storage     (1,1)   string                              % 1-by-1 string, indicate image buffer location
         viobj       (:,1)                                = []   % 1-by-1 videoinput object
         vsobj       (:,1)                                = []   % 1-by-1 videosource object
     end
@@ -52,6 +53,7 @@ classdef EBCamera < handle
         ROIWidth                % set/get, 1-by-1 double positive integer
         ROIHeight               % set/get, 1-by-1 double positive integer
         StartTime               % ___/get, 1-by-1 uint64, exact absolute camera beginning time, come from tic
+        Storage                 % set/get, 1-by-1 string, "memory" or "hard drive", "memory" as default
         VideoResolution         % ___/get, 1-by-2 double positive integer
     end
 
@@ -613,6 +615,32 @@ classdef EBCamera < handle
             value = this.start_t;
         end
 
+        %% Storage Getter & Setter
+        function value = get.Storage(this)
+            value = this.storage;
+        end
+
+        function set.Storage(this, value)
+            arguments
+                this
+                value   (1,1)   string  {mustBeMember(value, ...
+                    ["memory", "hard drive"])}
+            end
+
+            if this.IsConnected
+                if this.IsRunning
+                    throw(MException("EBCamera:invalidAccess", "Running camera " + ...
+                        "storage is unsetable."))
+                else
+                    this.storage = value;
+                    if ~isequal(value, this.ImagesBuffer.Storage)
+                        % modify Image Buffer
+                        this.ImagesBuffer = EBImages("dynamic", value);
+                    end
+                end
+            end
+        end
+
         %% VideoResolution Getter
         function value = get.VideoResolution(this)
             if this.IsConnected
@@ -622,7 +650,6 @@ classdef EBCamera < handle
                     "can not get parameters."));
             end
         end
-
     end
 
     methods (Access = public)

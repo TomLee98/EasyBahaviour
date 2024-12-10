@@ -1,7 +1,7 @@
-classdef mQueue < matlab.mixin.Copyable
-    %MQUEUE This class provide a basic queue and some operator
+classdef mQueueM < matlab.mixin.Copyable
+    %MQUEUEM This class provide a basic queue and some operator
     
-    properties (Access=private, Hidden)
+properties (Access=private, Hidden)
         length;
     end
 
@@ -10,7 +10,7 @@ classdef mQueue < matlab.mixin.Copyable
     end
     
     methods
-        function this = mQueue()
+        function this = mQueueM()
             %MQUEUE Initialize an empty queue
             this.length = 0;
             this.data_v = {};

@@ -2,14 +2,14 @@ classdef EBVideo < handle
     %EBVIDEO This is video defination
 
     properties(Access = public, Dependent)
-        FramesNum
-        FrameRate
-        IsEmpty
-        Mode
+        FramesNum       % ___/get, 1-by-1 nonnegtive integer
+        FrameRate       % set/get, 1-by-1 nonnegtive double
+        IsEmpty         % ___/get, 1-by-1 logical
+        Mode            % ___/get, 1-by-1 string, "static" or "dynamic"
     end
     
     properties(Access = private, Hidden)
-        video_frames    (1,1)   mQueue
+        video_frames    (1,1)   mQueueM
         frame_rate      (:,1)   double
         mode            (1,1)   string
     end
@@ -26,7 +26,8 @@ classdef EBVideo < handle
             % set variables
             this.mode = mode_;
             this.frame_rate = frame_rate_;
-            this.video_frames = mQueue();
+
+            this.video_frames = mQueueM();
 
             % initialize data
             switch mode_
@@ -47,12 +48,12 @@ classdef EBVideo < handle
             end
         end
 
-        function r = get.FramesNum(this)
-            r = numel(this.video_frames);
+        function value = get.FramesNum(this)
+            value = numel(this.video_frames);
         end
 
-        function r = get.FrameRate(this)
-            r = this.frame_rate;
+        function value = get.FrameRate(this)
+            value = this.frame_rate;
         end
 
         function set.FrameRate(this, value)
@@ -64,12 +65,12 @@ classdef EBVideo < handle
             this.frame_rate = value;
         end
 
-        function r = get.IsEmpty(this)
-            r = (numel(this.video_frames) == 0);
+        function value = get.IsEmpty(this)
+            value = (numel(this.video_frames) == 0);
         end
 
-        function r = get.Mode(this)
-            r = this.mode;
+        function value = get.Mode(this)
+            value = this.mode;
         end
 
         function delete(this)

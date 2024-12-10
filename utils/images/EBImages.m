@@ -2,28 +2,32 @@ classdef EBImages < handle
     %VIDEO This class defines 2D Video
 
     properties(Access=public, Dependent)
-        IsEmpty         % 1-by-1 logical
-        Size            % 1-by-1 nonnegtive integer
-        Mode            % 1-by-1 string, "static" or "dynamic"
+        IsEmpty         % ___/get, 1-by-1 logical
+        Size            % ___/get, 1-by-1 nonnegtive integer
+        Mode            % ___/get, 1-by-1 string, "static" or "dynamic"
+        Storage         % ___/get, 1-by-1 string, "memory","hard drive"
     end
     
     properties(Access = private, Hidden, NonCopyable)
-        image_queue (1,1)   mQueue
+        image_queue (1,1)   
         time        (:,1)   double
         mode        (1,1)   string
+        storage     (1,1)   string
     end
     
     methods
-        function this = EBImages(mode_, images_, time_)
+        function this = EBImages(mode_, storage_, images_, time_)
             %EBIMAGES A Constructor
             arguments
-                mode_   (1,1)   string  {mustBeMember(mode_, ["static", "dynamic"])} = "dynamic"
-                images_ (:,:,:)         {mustBeNonnegative}  = []
-                time_   (:,1)   double  {mustBeNonnegative} = []
+                mode_       (1,1)   string  {mustBeMember(mode_, ["static", "dynamic"])} = "dynamic"
+                storage_    (1,1)   string  {mustBeMember(storage_, ["memory","hard drive"])} = "memory"
+                images_     (:,:,:)         {mustBeNonnegative}  = []
+                time_       (:,1)   double  {mustBeNonnegative} = []
             end
 
-            % set mode
+            % set object mode and storage 
             this.mode = mode_;
+            this.storage = storage_;
 
             % initialize data
             switch mode_
@@ -53,7 +57,14 @@ classdef EBImages < handle
                 end
 
                 % set data
-                this.image_queue = mQueue();
+                switch this.storage
+                    case "memory"
+                        this.image_queue = mQueueM();
+                    case "hard drive"
+                        this.image_queue = mQueueHD();
+                    otherwise
+                end
+                
                 for k = 1:size(images_, 3)
                     this.image_queue.enqueue(images_(:,:,k));
                 end
@@ -62,7 +73,13 @@ classdef EBImages < handle
                     throw(MException("Video:invalidConstruction", ...
                         "Number of images and timestamps does not match."));
                 else
-                    this.image_queue = mQueue();
+                    switch this.storage
+                        case "memory"
+                            this.image_queue = mQueueM();
+                        case "hard drive"
+                            this.image_queue = mQueueHD();
+                        otherwise
+                    end
                     this.time = time_;
                 end
             end
@@ -84,6 +101,10 @@ classdef EBImages < handle
 
         function value = get.Size(this)
             value = numel(this.image_queue);
+        end
+
+        function value = get.Storage(this)
+            value = this.storage;
         end
     end
 
@@ -157,8 +178,12 @@ classdef EBImages < handle
     end
 
     methods (Static)
-        function e = empty()
-            e = EBImages("dynamic", [], []);
+        function hEBImage = empty(storage_)
+            arguments
+                storage_    (1,1)   string  {mustBeMember(storage_, ["memory","hard drive"])} = "memory"
+            end
+
+            hEBImage = EBImages("dynamic", storage_, [], []);
         end
     end
 end
