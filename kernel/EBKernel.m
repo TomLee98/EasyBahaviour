@@ -130,13 +130,13 @@ classdef EBKernel < handle
                 value.xBinning = this.devices{"camera"}.BinningHorizontal;
 
                 value.yBinning = this.devices{"camera"}.BinningVertical;
-                value.xResolution = this.options.XResolution;
-                value.yResolution = this.options.YResolution;
+                value.xResolution = this.options.ScaleOptions.xRes;
+                value.yResolution = this.options.ScaleOptions.yRes;
                 value.frameRate = this.devices{"camera"}.AcquireFrameRate;
                 value.bitDepth = this.devices{"camera"}.BitDepth;
 
                 value.deviceModel = this.devices{"camera"}.DeviceModelName;
-                value.resolutionUnit = this.options.ResolutionUnit;
+                value.resolutionUnit = this.options.ScaleOptions.resUnit;
                 value.dateTime = this.devices{"camera"}.DateTime;
             else
                 value = table('Size', [0, 13], ...
@@ -301,7 +301,7 @@ classdef EBKernel < handle
             this.npcs_frames = 0;
 
             %% Configure analysis tools
-            this.tracker = Tracker();
+            this.tracker = Tracker(this.options.TrackerOptions);
             this.parameterizer = Parameterizer(this.options.ParameterizerOptions);
             this.pfanalyzer = PopulationAnalyzer(this.options.PopulationOptions);
 
