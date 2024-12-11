@@ -34,18 +34,20 @@ V1          Archimedes        阿基米德
   |- V1.3       2024/12
   |     |- [Update] Basic Preference Options support
   |     |- [Update] Add long-time recording support (saving to disk realtime)
+  |     |- [Update] TODO: Add 'Boxes View' on VideoPlayer
   |     |- [Update] TODO: Add Scale and Scale Bar
   |     |- [Update] TODO: Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
-  |     |- [Update] TODO: Add 'Boxes View' on VideoPlayer
   |     |- [Update] TODO: Add 'Mass Center' on VideoPlayer
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
-  |     |- [Fix Bugs] TODO: 'outer' mode with bad synchronous and possible "break down"
+  |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
+  |     |- [Note]: lock the capture frame rate to 10 FPS because "hard drive" mode is not fast
   |- V1.4       2025/
   |     |- [Update] TODO: Advanced Preference Options support
   |     |- [Update] TODO: Add 'double Kalman Filter' for better prediction
   |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: long-time recording faster for numeric array by memmapfile
   |     |- [Update] TODO: Add Beightness/Contrast
+  |     |- [Update] TODO: Add .hdf5, .mat file export support
   |     |- [Fix Bugs]
   |- V1.5       2025/
   |     |- [Update] TODO: Add manual trigger

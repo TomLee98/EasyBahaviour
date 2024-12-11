@@ -1,4 +1,4 @@
-function updateComponentsOn(ax, vf, sw, bl, spr)
+function updateComponentsOn(ax, vf, sw, bl, spr, tgt)
 %UPDATECOMPONENTSON This function update components on ax by vf, sw as
 %switch, control component repaint
 
@@ -68,11 +68,16 @@ else
 end
 
 %% Update Boxes
-hBoxes = findobj(ax.Children, "Tag", "boxes");
 if sw.DetectBox == true
-
+    boxes = vf.DetectBoxes;
+    pos = cell2mat(boxes.values("uniform"));
+    lbl = boxes.keys("uniform");
+    color = getcmap(lbl, tgt);
+    % draw
+    createDetectBoxesOn(ax, pos, lbl, color);
 else
-    hBoxes.Visible = "off";
+    % empty
+    createDetectBoxesOn(ax, [], [], []);
 end
 
 %% Update Trajectory
@@ -82,3 +87,8 @@ end
 
 end
 
+function c = getcmap(lbl, tgt)
+c = strings(numel(lbl), 1);
+c(string(regexp(lbl, "[a-zA-Z]*", "match"))==tgt) = "g";
+c(string(regexp(lbl, "[a-zA-Z]*", "match"))==tgt) = "r";
+end

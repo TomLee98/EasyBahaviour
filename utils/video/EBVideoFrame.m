@@ -13,7 +13,6 @@ classdef EBVideoFrame < handle
         TimeStamp           % ___/get, 1-by-1 double, current frame relative captured time
     end
 
-    
     properties(SetAccess = immutable, GetAccess = private)
         detect_boxes        (1,1)   dictionary  % [OffsetX, OffsetY, Width, Height, PostPrab]
         geometric_centers   (1,1)   dictionary  % [PositionX, PositionY]
