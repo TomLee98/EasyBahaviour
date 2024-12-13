@@ -36,8 +36,8 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add long-time recording support (saving to disk realtime)
   |     |- [Update] Add 'Boxes View' on VideoPlayer
   |     |- [Update] Add Scale and Scale Bar
+  |     |- [Update] Add 'Traces' on VideoPlayer
   |     |- [Update] TODO: Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
-  |     |- [Update] TODO: Add 'Mass Center' on VideoPlayer
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
   |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
   |     |- [Note]: lock the capture frame rate to 10 FPS because "hard drive" mode is not fast
