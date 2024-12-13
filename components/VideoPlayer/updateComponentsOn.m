@@ -14,6 +14,8 @@ function updateComponentsOn(ax, vf, sw, bl, spr, tgt)
 %  [Scale]                                        [Meta Data] %
 %% ============================================================
 
+persistent trscolor;
+
 %% Update Time
 hTime = findobj(ax.Children, "Tag", "time");
 if sw.TimeStamp == true
@@ -28,16 +30,16 @@ end
 hScaleTxt = findobj(ax.Children, "Tag", "scaletxt");
 hScaleBar = findobj(ax.Children, "Tag", "scalebar");
 if sw.ScaleBar == true
-    if vf.Scale.resUnit == "um"
+    if vf.Scale.ResUnit == "um"
         sr = 1e4;
-    elseif vf.Scale.resUnit == "mm"
+    elseif vf.Scale.ResUnit == "mm"
         sr = 10;
-    elseif vf.Scale.resUnit == "inch"
+    elseif vf.Scale.ResUnit == "inch"
         sr = 1/2.54;
     else
         sr = 1;
     end
-    DX = bl / vf.Scale.xRes * sr;  % in pixels
+    DX = bl / vf.Scale.XRes * sr;  % in pixels
     hScaleBar.Visible = "on";
     hScaleBar.XData = [EBScreenLayout.SCALE_OFFSET_X.Value, ...
                        EBScreenLayout.SCALE_OFFSET_X.Value + DX];
@@ -80,9 +82,26 @@ else
     createDetectBoxesOn(ax, [], [], []);
 end
 
-%% Update Trajectory
-if sw.Trajectory == true
+%% Update Traces
+if sw.Traces == true
+    if isempty(trscolor), trscolor = configureDictionary("string", "cell"); end
+    colors = jet(256);
+    % use little transparency circle as traces
+    % hold 10 circles
+    traces = vf.Traces;
 
+    % ! note that no color release process
+    for key = traces.keys("uniform")'
+        if ~trscolor.isKey(key)
+            alloc_n = traces.numEntries;
+            % push new color from left color set
+            trscolor(key) = {colors(alloc_n+1, :)};
+        end
+    end
+
+    createTracesOn(ax, traces, trscolor, 0.5);
+else
+    createTracesOn(ax, {}, [], []);
 end
 
 end

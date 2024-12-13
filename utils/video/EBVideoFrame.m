@@ -5,17 +5,17 @@ classdef EBVideoFrame < handle
 
     properties(GetAccess = public, Dependent)
         DetectBoxes         % ___/get, 1-by-1 dictionary, identity |-> location, [OffsetX, OffsetY, Width, Height, PostPrab]
-        GeometricCenters    % ___/get, 1-by-1 dictionary, identity |-> location, [PositionX, PositionY]
+        CenterTraces        % ___/get, 1-by-1 dictionary, identity |-> location, [PositionX, PositionY, TimeStamp]
         ImageData           % ___/get, m-by-n uint8/uint16 image data
         MetaData            % ___/get, 1-by-1 string, command code, such as "A&B"
-        Scale               % ___/get, 1-by-1 struct, [xRes, yRes, resUnit], resolution for pixel size
+        Scale               % ___/get, 1-by-1 struct, [XRes, YRes, ResUnit, BarLength], resolution for pixel size
         Tag                 % ___/get, 1-by-1 double, current frame tag, positive integer
         TimeStamp           % ___/get, 1-by-1 double, current frame relative captured time
     end
 
     properties(SetAccess = immutable, GetAccess = private)
         detect_boxes        (1,1)   dictionary  % [OffsetX, OffsetY, Width, Height, PostPrab]
-        geometric_centers   (1,1)   dictionary  % [PositionX, PositionY]
+        center_traces       (1,1)   dictionary  % [PositionX, PositionY, TimeStamp]
         image_data          (:,:)               % image data
         meta_data           (1,1)   string      % command code, such as "A&B"
         scale               (1,1)   struct      % field: [xRes, yRes, resUnit]
@@ -24,15 +24,15 @@ classdef EBVideoFrame < handle
     end
     
     methods
-        function this = EBVideoFrame(image_, time_, tag_, meta_, scale_, boxes_, pos_)
+        function this = EBVideoFrame(image_, time_, tag_, meta_, scale_, boxes_, traces_)
             arguments
                 image_  (:,:)         
                 time_   (1,1)   double
                 tag_    (1,1)   double
                 meta_   (1,1)   string  = ""
-                scale_  (1,1)   struct  = struct("xRes",1, "yRes",1, "resUnit","mm")
-                boxes_  (1,1)   dictionary  = dictionary()
-                pos_    (1,1)   dictionary  = dictionary()
+                scale_  (1,1)   struct  = struct("XRes",0.1, "YRes",0.1, "ResUnit","mm", "BarLength",10)
+                boxes_  (1,1)   dictionary  = configureDictionary("string", "cell")
+                traces_ (1,1)   dictionary  = configureDictionary("string", "cell")
             end
 
             % immutable properties
@@ -42,7 +42,7 @@ classdef EBVideoFrame < handle
             this.meta_data = meta_;
             this.scale = scale_;
             this.detect_boxes = boxes_;
-            this.geometric_centers = pos_;
+            this.center_traces = traces_;
         end
 
         %% DetectBoxes Getter
@@ -51,8 +51,8 @@ classdef EBVideoFrame < handle
         end
 
         %% GeometricCenters Getter
-        function value = get.GeometricCenters(this)
-            value = this.geometric_centers;
+        function value = get.CenterTraces(this)
+            value = this.center_traces;
         end
 
         %% ImageData Getter

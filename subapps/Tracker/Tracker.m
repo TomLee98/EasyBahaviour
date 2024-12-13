@@ -58,25 +58,23 @@ classdef Tracker < handle
     end
 
     methods(Access = public)
-        function [boxes, gcs] = track_(this, frame)
+        function boxes = track_(this, frame)
             arguments
                 this
                 frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
             end
 
             boxes = dictionary();
-            gcs = dictionary();
 
             pause(0.4);
         end
 
-        function [boxes, gcs] = track(this, frame)
+        function boxes = track(this, frame)
             % This function implements "SORT" algorithm for object tracking
             % Input:
             %   - frame: 1-by-2 cell array, with {image, time}
             % Output:
             %   - boxes: 1-by-1 dictionary, identity(string) -> locatedprob(1-by-5 double, [x,y,w,h,p])
-            %   - gcs: 1-by-1 dictionary, identity(string) -> mass center(1-by-2 double, [x,y])
             arguments
                 this
                 frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
@@ -137,9 +135,6 @@ classdef Tracker < handle
                         end
                     end
             end
-
-            %% Output Simplified Geometric Centers
-            gcs = Parameterizer.GetGeometricCenters(frame{1}, boxes);
         end
 
         function status = refreshComponents(this, options)
@@ -173,6 +168,12 @@ classdef Tracker < handle
             catch ME
                 rethrow(ME);
             end
+        end
+    end
+
+    methods(Static)
+        function value = noneTrack()
+            value = configureDictionary("string", "cell");
         end
     end
 

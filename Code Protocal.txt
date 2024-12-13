@@ -1,8 +1,10 @@
 Project code protocal: 
 - <class>: first letter upper case
-- <method>: camel case
+- <method>: 
+    - <public/static/external>: camel case
+    - <private/protected>: lower case with underline as splitter
 - <constant>: full upper case with underline as splitter
 - <variable> 
     - <temporary variable>: lower case with underline as splitter
     - <function parameter>: camel case
-- <dependent>: first letter upper case
+- <dependent properties>: first letter upper case

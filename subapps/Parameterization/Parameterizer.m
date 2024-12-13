@@ -1,6 +1,5 @@
 classdef Parameterizer
-    %PARAMETERIZER 此处显示有关此类的摘要
-    %   此处显示详细说明
+    %PARAMETERIZER This
     
     properties(Access = private)
         options
@@ -11,6 +10,7 @@ classdef Parameterizer
             arguments
                 options_    (1,1)   struct  = struct("backbone_curvature",     {{@bc, {}}}, ...
                                                      "center_acceleration",    {{@ca, {}}}, ...
+                                                     "center_position",        {{@cp, {}}}, ...
                                                      "center_velocity",        {{@cv, {}}}, ...
                                                      "head_direction",         {{@hd, {}}}, ...
                                                      "segment_acceleration",   {{@sa, {}}}, ...
@@ -21,7 +21,7 @@ classdef Parameterizer
             this.options = options_;
         end
 
-        function params = collect(frames, ops)
+        function params = collect(frames, boxes, ops)
             % This function call operators for extract parameters(features)
             % from frames
             % Input:
@@ -35,10 +35,18 @@ classdef Parameterizer
                                             % with {{image_1, timestamp_1};
                                             % ...
                                             % {image_n, timestamp_n}}
-                ops     (1,:)   string  {mustBeMember(ops, ["bc","ca","cv","hd","sa","sv","td"])} = ["ba","cv","hd"]
+                boxes   (:,1)   cell        % t-by-1 boxes, boxes from tracker as 1-by-1 dictionary
+                ops     (1,:)   string  {mustBeMember(ops, ["bc","ca","cp","cv","hd","sa","sv","td"])} = ["ba","cp","cv","hd"]
             end
 
-
+            % calculate maximum possible set, others parameters could be nan
+            params = struct();
+            for k = 1:numel(ops)
+                %% Calculate by operator
+                oprfunc = str2func(ops(k));
+                [frame, box] = Parameterizer.dataAdaptor(frames, boxes, ops(k));
+                params.(ops(k)) = oprfunc(frame, box);
+            end
         end
 
         function delete(this)
@@ -64,6 +72,34 @@ classdef Parameterizer
             end
         end
 
+        function [frame, boxes] = dataAdaptor(frame, boxes, op)
+            arguments
+                frame   (:,1)   cell
+                boxes   (:,1)   cell
+                op      (1,1)   string  {mustBeMember(op, ["bc","ca","cp","cv","hd","sa","sv","td"])} = "cp"
+            end
+
+            switch op
+                case "bc"
+
+                case "ca"
+
+                case "cp"
+                    frame = frame{end};
+                    boxes  = boxes{end};
+                case "cv"
+
+                case "hd"
+
+                case "sa"
+
+                case "sv"
+
+                case "td"
+
+                otherwise
+            end
+        end
     end
 end
 

@@ -1,9 +1,9 @@
-function population = populset(varargin)
+function populopt = populset(varargin)
 %POPULSET This function generate tracker options for PopulationAnalyzer,
 % whose behaviour looks like optimset
 
 %                            model      needed parameters identity
-population_option = struct("diffusion",     ["CA", "CV"], ...
-                           "preference",    ["CA","CV","HD","BC"]);
+populopt = struct("diffusion",     ["CA", "CV"], ...
+                  "preference",    ["CA","CV","HD","BC"]);
 end
 

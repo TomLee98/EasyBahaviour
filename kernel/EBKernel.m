@@ -36,6 +36,7 @@ classdef EBKernel < handle
         parameterizer   (1,1)   Parameterizer                           % Parameterizer object, motion parameterize
         npcs_frames     (1,1)   double              = 0                 % Processed frames number with feature
         pfanalyzer      (1,1)   PopulationAnalyzer                      % PopulationAnalyzer object, analyze population features
+        results         (1,1)   struct                                  % store acquired results defined by feature
         start_time      (1,1)   uint64              = 0                 % kernel(camera) absolute start time from tic
         tracker         (1,1)   Tracker                                 % Tracker object, tracking object motion
         videos          (1,1)   EBVideo             = EBVideo.empty()   % video frame queue, with VideoFrame object as item   
@@ -130,13 +131,13 @@ classdef EBKernel < handle
                 value.xBinning = this.devices{"camera"}.BinningHorizontal;
 
                 value.yBinning = this.devices{"camera"}.BinningVertical;
-                value.xResolution = this.options.ScaleOptions.xRes;
-                value.yResolution = this.options.ScaleOptions.yRes;
+                value.xResolution = this.options.ScaleOptions.XRes;
+                value.yResolution = this.options.ScaleOptions.YRes;
                 value.frameRate = this.devices{"camera"}.AcquireFrameRate;
                 value.bitDepth = this.devices{"camera"}.BitDepth;
 
                 value.deviceModel = this.devices{"camera"}.DeviceModelName;
-                value.resolutionUnit = this.options.ScaleOptions.resUnit;
+                value.resolutionUnit = this.options.ScaleOptions.ResUnit;
                 value.dateTime = this.devices{"camera"}.DateTime;
             else
                 value = table('Size', [0, 13], ...
@@ -329,25 +330,29 @@ classdef EBKernel < handle
 
                 if this.feature(1) == EBStatus.TRACKER_ENABLE
                     % track followed, parallel
-                    [boxes, gcs] = this.tracker.track(frame);
+                    boxes = this.tracker.track(frame);
                     
                     if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
                         % parameterize followed, parallel
+                        params = this.parameterizer.collect({frame}, {boxes}, ["cp"]);
+                        gcs = params.cp;
 
                         if this.feature(3) == EBStatus.POPULATION_ENABLE
                             % populaton analysis followed, parallel
-
+                            this.pfanalyzer.extendTrace(gcs);
+                            traces = this.pfanalyzer.Traces;
                         end
                     end
                 else
-                    % tracking disabled
-                    % note very fast getter comes here
+                    boxes = Tracker.noneTrack();
+                    traces = PopulationAnalyzer.noneTrace();
+
                     pause(2/this.devices{"camera"}.AcquireFrameRate);
                 end
 
                 % construct VideoFrame
                 vf = EBVideoFrame(frame{1}, frame{2}, this.npcs_frames + 1, ...
-                    code, scale, boxes, gcs);
+                    code, scale, boxes, traces);
 
                 % save video frames
                 this.videos.AddFrame(vf);

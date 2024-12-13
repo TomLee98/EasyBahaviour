@@ -8,7 +8,7 @@ function ax = createDetectBoxesOn(ax, pos, lbl, color)
 %   - color: n-by-3 or 1-by-3 or RGB simple code for rectange
 
 arguments
-    ax
+    ax      (1,1)
     pos     (:,4)   double  {mustBeNonnegative}
     lbl     (:,1)   string  
     color
@@ -16,7 +16,7 @@ end
 
 %% validate objects number
 if size(pos, 1) ~= numel(lbl)
-    throw(MException("createDetectBox:objectsNotMatch", ...
+    throw(MException("createDetectBoxOn:objectsNotMatch", ...
         "Boxes number must be equal to labels number."));
 end
 
@@ -50,7 +50,7 @@ delete(findobj(ax.Children, "Tag", "boxes"));
 delete(findobj(ax.Children, "Tag", "labels"))
 
 %% create new boxes and labels
-for n = 1:size(pos, 1)
+for n = 1:nobj
     % draw rectangle
     rectangle(ax, "Position", pos(n, :), "EdgeColor",color(n, :), "LineWidth",1, ...
         "Tag", "boxes");

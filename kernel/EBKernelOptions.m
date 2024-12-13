@@ -87,9 +87,10 @@ classdef EBKernelOptions < handle
     methods(Static)
         function options = defaultOptions()
             %% Scale Options
-            scale_option = struct("xRes",       0.1, ...    % mm / pix
-                                  "yRes",       0.1, ...    % mm / pix
-                                  "resUnit",    "mm");
+            scale_option = struct("XRes",       0.1, ...    % mm / pix
+                                  "YRes",       0.1, ...    % mm / pix
+                                  "ResUnit",    "mm", ...
+                                  "BarLength",  10);
 
             %% Tracker Options
             tracker_option = trackset();
@@ -114,7 +115,7 @@ if ~isstruct(A)
     throw(MException("EBKernelOptions:invalidScaleOption", ...
         "Option must be a struct."));
 end
-if ~all(ismember(string(fieldnames(A)), ["xRes", "yRes", "resUnit"]))
+if ~all(ismember(string(fieldnames(A)), ["XRes", "YRes", "ResUnit", "BarLength"]))
     throw(MException("EBKernelOptions:invalidScaleKey", ...
         "Unsupported key in scale option."));
 end
