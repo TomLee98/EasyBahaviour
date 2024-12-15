@@ -21,7 +21,13 @@ classdef Parameterizer
             this.options = options_;
         end
 
-        function params = collect(frames, boxes, ops)
+        function delete(this)
+            % ~
+        end
+    end
+
+    methods (Access = public)
+        function params = gather(this, frames, boxes, ops)
             % This function call operators for extract parameters(features)
             % from frames
             % Input:
@@ -31,12 +37,13 @@ classdef Parameterizer
             %   - params:
 
             arguments
-                frames  (:,1)   cell        % t-by-1 frames, local temporary frames, 
-                                            % with {{image_1, timestamp_1};
+                this    (1,1)
+                frames  (:,2)   cell        % t-by-1 frames, local temporary frames, 
+                                            % with [{image_1, timestamp_1};
                                             % ...
-                                            % {image_n, timestamp_n}}
+                                            % {image_n, timestamp_n}]
                 boxes   (:,1)   cell        % t-by-1 boxes, boxes from tracker as 1-by-1 dictionary
-                ops     (1,:)   string  {mustBeMember(ops, ["bc","ca","cp","cv","hd","sa","sv","td"])} = ["ba","cp","cv","hd"]
+                ops     (1,:)   string      = ["ba","cp","cv","hd"]
             end
 
             % calculate maximum possible set, others parameters could be nan
@@ -47,10 +54,6 @@ classdef Parameterizer
                 [frame, box] = Parameterizer.dataAdaptor(frames, boxes, ops(k));
                 params.(ops(k)) = oprfunc(frame, box);
             end
-        end
-
-        function delete(this)
-            % ~
         end
     end
 
@@ -74,7 +77,7 @@ classdef Parameterizer
 
         function [frame, boxes] = dataAdaptor(frame, boxes, op)
             arguments
-                frame   (:,1)   cell
+                frame   (:,2)   cell
                 boxes   (:,1)   cell
                 op      (1,1)   string  {mustBeMember(op, ["bc","ca","cp","cv","hd","sa","sv","td"])} = "cp"
             end
@@ -85,7 +88,7 @@ classdef Parameterizer
                 case "ca"
 
                 case "cp"
-                    frame = frame{end};
+                    frame = frame(end, :);
                     boxes  = boxes{end};
                 case "cv"
 

@@ -334,7 +334,8 @@ classdef EBKernel < handle
                     
                     if this.feature(2) == EBStatus.PARAMETERIZER_ENABLE
                         % parameterize followed, parallel
-                        params = this.parameterizer.collect({frame}, {boxes}, ["cp"]);
+                        boxess = {boxes};
+                        params = this.parameterizer.gather(frame, boxess, "cp");
                         gcs = params.cp;
 
                         if this.feature(3) == EBStatus.POPULATION_ENABLE

@@ -8,7 +8,7 @@ classdef EBCamera < handle
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
         duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
-        fr_target   (1,1)   double      {mustBePositive} = 25   % 1-by-1 target frame rate, Hz
+        fr_target   (1,1)   double      {mustBePositive} = 2   % 1-by-1 target frame rate, Hz
         iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
         start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
         start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time
@@ -26,8 +26,8 @@ classdef EBCamera < handle
     end
 
     properties (Access=public, Dependent)
-        AcquireFrameRate        % set/get, 1-by-1 double positive, in [1, 100], 25 as default
-        Adapter                 % set/get, 1-by-1 string, in ["gentl", "winvideo", "ni"]
+        AcquireFrameRate        % set/get, 1-by-1 double positive, in [1, 10], 10 as default
+        Adapter                 % set/get, 1-by-1 string, in ["gentl", "winvideo", "ni", "virtual"]
         BinningHorizontal       % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BinningVertical         % set/get, 1-by-1 double positive integer in [1,2,3,4]
         BitDepth                % ___/get, 1-by-1 double positive integer in [8,12]
@@ -62,7 +62,7 @@ classdef EBCamera < handle
             %EBCAMERA A constructor
             arguments
                 adapter_     (1,1)   string  {mustBeMember(adapter_, ["winvideo", ...
-                                             "gentl","ni"])} = "gentl"
+                                             "gentl","ni","virtual"])} = "gentl"    % virtual for debugging
                 identity_    (1,1)   double  {mustBePositive, mustBeInteger} = 1
                 format_      (1,1)   string  = "Mono12"
             end
@@ -563,8 +563,13 @@ classdef EBCamera < handle
         %% ROIWidth Getter & Setter
         function value = get.ROIWidth(this)
             if this.IsConnected
-                rpos = this.viobj.ROIPosition;
-                value = rpos(3);
+                switch this.Adapter
+                    case "virtual"
+                        value = 2048;
+                    otherwise
+                        rpos = this.viobj.ROIPosition;
+                        value = rpos(3);
+                end
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -588,8 +593,14 @@ classdef EBCamera < handle
         %% ROIHeight Getter & Setter
         function value = get.ROIHeight(this)
             if this.IsConnected
-                rpos = this.viobj.ROIPosition;
-                value = rpos(4);
+                switch this.Adapter
+                    case "virtual"
+                        value = 1088;
+                    otherwise
+                        rpos = this.viobj.ROIPosition;
+                        value = rpos(4);
+                end
+                
             else
                 throw(MException("EBCamera:invalidAccess", "Disconnected camera " + ...
                     "can not get parameters."));
@@ -656,39 +667,48 @@ classdef EBCamera < handle
         function Connect(this)
             if ~this.IsConnected
                 try
-                    % get object (link to old profile)
-                    this.viobj = videoinput(this.Adapter, ...
-                                            this.DeviceID, ...
-                                            this.ImageFormat);
-                    this.vsobj = getselectedsource(this.viobj);
-
-                    % set binning at first is not match, which will modify resolution
-                    % next time
-                    if (this.vsobj.BinningHorizontal ~= this.img_option.BinningHorizontal) ...
-                            || (this.vsobj.BinningVertical ~= this.img_option.BinningVertical)
-                        this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
-                        this.vsobj.BinningVertical = this.img_option.BinningVertical;
-
-                        % delete videoinput and reconnect
-                        delete(this.viobj);
-                        this.viobj = videoinput(this.Adapter, ...
-                            this.DeviceID, ...
-                            this.ImageFormat);
-                        % resource
-                        this.vsobj = getselectedsource(this.viobj);
+                    switch this.Adapter
+                        case "virtual"
+                            % let viobj as imageDataStore which links to
+                            % an image folder
+                            this.viobj = imageDatastore("scripts\RawSet\tracking_test\", ...
+                                "FileExtensions",".png");
+                        otherwise
+                            % get object (link to old profile)
+                            this.viobj = videoinput(this.Adapter, ...
+                                                    this.DeviceID, ...
+                                                    this.ImageFormat);
+                            this.vsobj = getselectedsource(this.viobj);
+        
+                            % set binning at first is not match, which will modify resolution
+                            % next time
+                            if (this.vsobj.BinningHorizontal ~= this.img_option.BinningHorizontal) ...
+                                    || (this.vsobj.BinningVertical ~= this.img_option.BinningVertical)
+                                this.vsobj.BinningHorizontal = this.img_option.BinningHorizontal;
+                                this.vsobj.BinningVertical = this.img_option.BinningVertical;
+        
+                                % delete videoinput and reconnect
+                                delete(this.viobj);
+                                this.viobj = videoinput(this.Adapter, ...
+                                    this.DeviceID, ...
+                                    this.ImageFormat);
+                                % resource
+                                this.vsobj = getselectedsource(this.viobj);
+                            end
+        
+                            % set new profile
+                            % set trigger parameters
+                            triggerconfig(this.viobj, 'manual');
+                            this.viobj.TriggerRepeat = inf;
+                            this.viobj.FramesPerTrigger = 1;
+        
+                            % set ROI parameters
+                            this.viobj.ROIPosition = [this.img_option.OffsetX, ...
+                                                      this.img_option.OffsetY, ...
+                                                      this.img_option.ROIWidth, ...
+                                                      this.img_option.ROIHeight];
                     end
-
-                    % set new profile
-                    % set trigger parameters
-                    triggerconfig(this.viobj, 'manual');
-                    this.viobj.TriggerRepeat = inf;
-                    this.viobj.FramesPerTrigger = 1;
-
-                    % set ROI parameters
-                    this.viobj.ROIPosition = [this.img_option.OffsetX, ...
-                                              this.img_option.OffsetY, ...
-                                              this.img_option.ROIWidth, ...
-                                              this.img_option.ROIHeight];
+                    
                 catch ME
                     throw(ME);
                 end
@@ -814,9 +834,17 @@ classdef EBCamera < handle
         function capture_one_frame(this, src, evt)
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
-
-            trigger(this.viobj);        % here is DAQ start time
-            img = getdata(this.viobj);
+            
+            switch this.Adapter
+                case "virtual"
+                    n = numel(this.viobj.Files);
+                    idx = n - abs(mod(this.ImagesBuffer.Size, 2*n-2) - n + 1);
+                    img = this.viobj.readimage(idx);
+                    pause(0.005);        % simulate ~10ms capture delay
+                otherwise
+                    trigger(this.viobj);        % here is DAQ start time
+                    img = getdata(this.viobj);
+            end
 
             % input to images buffer
             timestamp = toc(this.start_t);
@@ -833,7 +861,9 @@ classdef EBCamera < handle
             evt; %#ok<VUNUS>
 
             % start object
-            start(this.viobj);  % about 220 ms
+            if this.Adapter~="virtual"
+                start(this.viobj);  % about 220 ms
+            end
             
             % set the camera beginning
             this.start_t = tic;
@@ -844,7 +874,10 @@ classdef EBCamera < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            stop(this.viobj);
+            if this.Adapter~="virtual"
+                stop(this.viobj);
+            end
+            
             this.start_t = 0;
         end
     end

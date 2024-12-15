@@ -91,13 +91,13 @@ classdef EBDAQ < handle
 
             % init camera port checking timer
             this.cam_listener = timer("BusyMode",       "drop", ...
-                                     "ExecutionMode",   "fixedRate", ...
-                                     "Name",            "EBCamera_Listener", ...
-                                     "Period",          0.02, ...          % detection error, 0.01 as minimal stable period
-                                     "StartDelay",      0.4, ...           % split tic beginning and trigger listening
-                                     "TasksToExecute",  inf, ...
-                                     "StartFcn",        @this.listen_init, ...
-                                     "TimerFcn",        @this.listen_for_trigger);
+                                      "ExecutionMode",   "fixedRate", ...
+                                      "Name",            "EBCamera_Listener", ...
+                                      "Period",          0.02, ...          % detection error, 0.01 as minimal stable period
+                                      "StartDelay",      0.4, ...           % split tic beginning and trigger listening
+                                      "TasksToExecute",  inf, ...
+                                      "StartFcn",        @this.listen_init, ...
+                                      "TimerFcn",        @this.listen_for_trigger);
 
             % disable raw devices warning
             EBDAQ.ManageWarnings("off");
@@ -306,7 +306,7 @@ classdef EBDAQ < handle
             arguments
                 this
                 value   (1,1)   string  {mustBeMember(value, ...
-                                        ["ni","adi","mcc","directsound","digilent"])}
+                                        ["ni","adi","mcc","directsound","digilent", "virtual"])}
             end
 
             if ~this.IsConnected
@@ -323,18 +323,25 @@ classdef EBDAQ < handle
         function Connect(this)
             if ~this.IsConnected
                 try
-                    % connect daq device
-                    this.daqobj = daq(this.Vendor);
+                    switch this.vendor
+                        case "virtual"
+                            this.daqobj = figure("Visible","off");  % pseudo daq
+                            this.vport_mapping = dictionary(["1","2","3","4","CLOSE"], ...
+                                {[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,0,0]}); 
+                        otherwise
+                            % connect daq device
+                            this.daqobj = daq(this.Vendor);
 
-                    % configure line property
-                    % camera channel as input:
-                    camera_channel = sprintf("port%d/line%d", this.cport);
-                    addinput(this.daqobj, this.device_id, camera_channel, "Digital");
+                            % configure line property
+                            % camera channel as input:
+                            camera_channel = sprintf("port%d/line%d", this.cport);
+                            addinput(this.daqobj, this.device_id, camera_channel, "Digital");
 
-                    % valves channel as output:
-                    for k = 1:size(this.vport, 1)
-                        valve_channel = sprintf("port%d/line%d", this.vport(k,:));
-                        addoutput(this.daqobj, this.device_id, valve_channel, "Digital");
+                            % valves channel as output:
+                            for k = 1:size(this.vport, 1)
+                                valve_channel = sprintf("port%d/line%d", this.vport(k,:));
+                                addoutput(this.daqobj, this.device_id, valve_channel, "Digital");
+                            end
                     end
 
                     % interpret code file
@@ -463,7 +470,13 @@ classdef EBDAQ < handle
 
                 % send one command
                 cmd = this.commands.cmd(this.cmd_pointer, :);
-                write(this.daqobj, cmd);
+
+                switch this.vendor
+                    case "virtual"
+                        fprintf("valves code: %s\n", string(cmd).join(" "));
+                    otherwise
+                        write(this.daqobj, cmd);
+                end
             end
         end
 
@@ -488,8 +501,14 @@ classdef EBDAQ < handle
             src; %#ok<VUNUS>
             evt; %#ok<VUNUS>
 
-            % detected voltage changing
-            [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
+            switch this.vendor
+                case "virtual"
+                    cam_vl = EBDAQ.VOLTAGE_HIGH;
+                otherwise
+                    % detected voltage changing
+                    [cam_vl, ~, ~] = read(this.daqobj, OutputFormat="Matrix");
+            end
+            
             if cam_vl == EBDAQ.VOLTAGE_HIGH
                 stop(src);      % stop this timer immediately
                 start(this.cmd_sender);

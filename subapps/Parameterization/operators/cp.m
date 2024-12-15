@@ -16,14 +16,15 @@ mc = configureDictionary("string", "cell");
 
 if boxes.isConfigured && boxes.numEntries > 0
     img = frame{1};
-    time_stamp = frame(2);
+    time_stamp = frame{2};
     for key = boxes.keys("uniform")'
         % use global threshold for background extraction
-        box = boxes{key}(1:4);
+        box = ceil(boxes{key}(1:4));
         bw = imbinarize(img(box(2):box(2)+box(4)-1, box(1):box(1)+box(3)-1), "global");
 
-        mc_x = mean(sum(bw, 1).*(0.5:box(3)+0.5));
-        mc_y = mean(sum(bw, 2).*(0.5:box(4)+0.5)');
+        % inner coordination + offset
+        mc_x = sum(sum(bw, 1).*(0.5:box(3)-0.5))/sum(bw, "all") + box(1);
+        mc_y = sum(mean(sum(bw, 2).*(0.5:box(4)-0.5)'))/sum(bw, "all") + box(2);
 
         mc(key) = {ceil([mc_x, mc_y, time_stamp])};
     end

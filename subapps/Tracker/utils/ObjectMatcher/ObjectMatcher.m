@@ -84,7 +84,6 @@ classdef ObjectMatcher < handle
                 end
             end
             % remove all new keys in observed
-            observed(new) = [];
             [~, newloc] = ismember(new, keys_observed);
             CostMat(newloc, :) = [];
             keys_observed(newloc) = [];
@@ -103,16 +102,9 @@ classdef ObjectMatcher < handle
                 end
             end
             % remove all lost keys in predicted
-            predicted(lost) = [];
             [~, lostloc] = ismember(lost, keys_predicted);
             CostMat(:, lostloc) = [];
             keys_predicted(lostloc) = [];
-
-            % keep intersection consostancy
-            if observed.numEntries ~= predicted.numEntries
-                throw(MException("ObjectMatcher:innerError", ...
-                    "Unknown error caused."));
-            end
 
             % [case 3: complete matching by Hungarian algorithm]
             % ============ predicted ========= %
@@ -123,7 +115,12 @@ classdef ObjectMatcher < handle
             if ~isempty(CostMat)
                 [ids, cost] = Hungarian(CostMat);
                 for k = 1:numel(ids)
-                    matched = [matched; [keys_predicted(ids(k)), keys_observed(k)]]; %#ok<AGROW>
+                    % treat ids(==0) as new object
+                    if ids(k) == 0
+                        new = [new; keys_observed(k)]; %#ok<AGROW>
+                    else
+                        matched = [matched; [keys_predicted(ids(k)), keys_observed(k)]]; %#ok<AGROW>
+                    end
                 end
             else
                 cost = DistMax*(numel(new) + numel(lost));

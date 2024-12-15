@@ -101,7 +101,8 @@ if sw.Traces == true
 
     createTracesOn(ax, traces, trscolor, 0.5);
 else
-    createTracesOn(ax, {}, [], []);
+    createTracesOn(ax, configureDictionary("string", "cell"), ...
+        configureDictionary("string", "cell"), 0);
 end
 
 end
