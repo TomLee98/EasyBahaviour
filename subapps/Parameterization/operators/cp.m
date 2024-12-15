@@ -19,7 +19,7 @@ if boxes.isConfigured && boxes.numEntries > 0
     time_stamp = frame{2};
     for key = boxes.keys("uniform")'
         % use global threshold for background extraction
-        box = ceil(boxes{key}(1:4));
+        box = floor(boxes{key}(1:4));
         bw = imbinarize(img(box(2):box(2)+box(4)-1, box(1):box(1)+box(3)-1), "global");
 
         % inner coordination + offset

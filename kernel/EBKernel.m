@@ -324,6 +324,7 @@ classdef EBKernel < handle
             while this.devices{"camera"}.IsRunning
                 % require current frame
                 frame = this.devices{"camera"}.GetCurrentFrame();
+
                 % require current task
                 task = this.devices{"daq_device"}.GetCurrentTask();
                 if isempty(task), code = "CLOSE"; else, code = task.code; end
@@ -344,6 +345,8 @@ classdef EBKernel < handle
                             traces = this.pfanalyzer.Traces;
                         end
                     end
+                    
+                    pause(0.1);
                 else
                     boxes = Tracker.noneTrack();
                     traces = PopulationAnalyzer.noneTrace();

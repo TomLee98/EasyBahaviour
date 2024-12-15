@@ -72,11 +72,16 @@ end
 %% Update Boxes
 if sw.DetectBox == true
     boxes = vf.DetectBoxes;
-    pos = cell2mat(boxes.values("uniform"));
-    lbl = boxes.keys("uniform");
-    color = getcmap(lbl, tgt);
-    % draw
-    createDetectBoxesOn(ax, pos, lbl, color);
+    if boxes.numEntries ~= 0
+        box = cell2mat(boxes.values("uniform"));
+        pos = box(:, 1:4);
+        class_ = boxes.keys("uniform");
+        color = getcmap(class_, tgt);
+        % draw
+        sposteri = sprintf("%.2f,", box(:,end)).split(",");
+        lbl = class_ + ": " + sposteri(1:end-1);
+        createDetectBoxesOn(ax, pos, lbl, color);
+    end
 else
     % empty
     createDetectBoxesOn(ax, [], [], []);
@@ -110,5 +115,5 @@ end
 function c = getcmap(lbl, tgt)
 c = strings(numel(lbl), 1);
 c(string(regexp(lbl, "[a-zA-Z]*", "match"))==tgt) = "g";
-c(string(regexp(lbl, "[a-zA-Z]*", "match"))==tgt) = "r";
+c(string(regexp(lbl, "[a-zA-Z]*", "match"))~=tgt) = "r";
 end

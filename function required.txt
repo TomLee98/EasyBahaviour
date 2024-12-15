@@ -37,10 +37,12 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add 'Boxes View' on VideoPlayer
   |     |- [Update] Add Scale and Scale Bar
   |     |- [Update] Add 'Traces' on VideoPlayer
+  |     |- [Update] TODO: optimize capturing and computing running scheduling
   |     |- [Update] TODO: Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
   |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
   |     |- [Note]: lock the capture frame rate to 10 FPS because "hard drive" mode is not fast
+  |     |- [Note]: parallel computing will suspund 'timer' running (include tic/toc)
   |- V1.4       2025/
   |     |- [Update] TODO: Advanced Preference Options support
   |     |- [Update] TODO: VideoPlayer full support

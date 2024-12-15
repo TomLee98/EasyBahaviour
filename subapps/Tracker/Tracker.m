@@ -36,10 +36,12 @@ classdef Tracker < handle
                                                                        "dist", "Euclidean"), ...
                                                      "tkopts",  struct("target",   "larva", ...
                                                                        "mmdl",  MotionModel("Brownian-Gaussian"), ...
-                                                                       "pth",   0.35, ...
+                                                                       "pth",   0.5, ...
                                                                        "memlen", 10, ...
                                                                        "xRes", 0.1, ... % mm/pixel
-                                                                       "yRes", 0.1));
+                                                                       "yRes", 0.1, ...
+                                                                       "xLim", [1, 2048], ...
+                                                                       "yLim", [1, 1088]));
             end
 
             % initialize variables
@@ -83,8 +85,13 @@ classdef Tracker < handle
             %% Detect Objects from Current Frame
             t_cur = frame{2};
 
+            if isempty(t_cur) || isnan(t_cur) ...
+                    || (t_cur - this.time_prev <= 0.04)     % 25 Hz as maximum detect rate
+                boxes = configureDictionary("string", "cell");
+                return;
+            end
+
             duration_sec = [this.time_prev, t_cur];
-            this.time_prev = t_cur;
 
             % note that posterior as prior when moving detection
             obj_observed = this.hLOD.detect(frame{1});  % {boxes, posterior}
@@ -135,6 +142,9 @@ classdef Tracker < handle
                         end
                     end
             end
+
+            % 
+            this.time_prev = t_cur;
         end
 
         function status = refreshComponents(this, options)
@@ -155,12 +165,14 @@ classdef Tracker < handle
 
                 mdl = this.opts.tkopts.mmdl;
                 scale = struct("xRes", this.opts.tkopts.xRes, ...
-                    "yRes", this.opts.tkopts.yRes);
+                               "yRes", this.opts.tkopts.yRes);
+                bound = [this.opts.tkopts.xLim; ...
+                         this.opts.tkopts.yLim];
                 lambda = this.opts.tkopts.pth^(1/(this.opts.tkopts.memlen+1));
 
                 if this.hLOD.Loaded
                     target = find(this.hLOD.LabelsOrder==this.opts.tkopts.target);
-                    this.hBMC = BayesianMotionClassifier(mdl, scale, target, lambda);
+                    this.hBMC = BayesianMotionClassifier(mdl, scale, bound, target, lambda);
                     status = 0;
                 else
                     status = -1;

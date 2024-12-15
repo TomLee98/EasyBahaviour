@@ -8,7 +8,7 @@ classdef EBCamera < handle
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
         duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
-        fr_target   (1,1)   double      {mustBePositive} = 2   % 1-by-1 target frame rate, Hz
+        fr_target   (1,1)   double      {mustBePositive} = 2.5    % 1-by-1 target frame rate, Hz
         iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
         start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
         start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time
@@ -87,7 +87,7 @@ classdef EBCamera < handle
             this.cap_agent = timer("Name",          "EBCamera_Agent", ...
                                    "BusyMode",      "drop", ...         % drop frame 
                                    "ExecutionMode", "fixedRate", ...
-                                   "Period",        1/25,  ...          modified
+                                   "Period",        0.2,  ...             modified
                                    "TasksToExecute",inf, ...            modified
                                    "StartDelay",    0.25, ...
                                    "StartFcn",      @this.capture_begin, ...
@@ -565,7 +565,8 @@ classdef EBCamera < handle
             if this.IsConnected
                 switch this.Adapter
                     case "virtual"
-                        value = 2048;
+                        img = this.viobj.readimage(1);
+                        value = size(img, 2);
                     otherwise
                         rpos = this.viobj.ROIPosition;
                         value = rpos(3);
@@ -595,7 +596,8 @@ classdef EBCamera < handle
             if this.IsConnected
                 switch this.Adapter
                     case "virtual"
-                        value = 1088;
+                        img = this.viobj.readimage(1);
+                        value = size(img, 1);
                     otherwise
                         rpos = this.viobj.ROIPosition;
                         value = rpos(4);
@@ -671,7 +673,7 @@ classdef EBCamera < handle
                         case "virtual"
                             % let viobj as imageDataStore which links to
                             % an image folder
-                            this.viobj = imageDatastore("scripts\RawSet\tracking_test\", ...
+                            this.viobj = imageDatastore("scripts\RawSet\data1\", ...
                                 "FileExtensions",".png");
                         otherwise
                             % get object (link to old profile)
@@ -837,10 +839,10 @@ classdef EBCamera < handle
             
             switch this.Adapter
                 case "virtual"
-                    n = numel(this.viobj.Files);
-                    idx = n - abs(mod(this.ImagesBuffer.Size, 2*n-2) - n + 1);
-                    img = this.viobj.readimage(idx);
-                    pause(0.005);        % simulate ~10ms capture delay
+                    filename = fullfile(string(this.viobj.Folders), ...
+                        sprintf("%d.png", this.ImagesBuffer.Size+1));
+                    img = imread(filename, "png");
+                    pause(0.02);
                 otherwise
                     trigger(this.viobj);        % here is DAQ start time
                     img = getdata(this.viobj);
@@ -863,6 +865,8 @@ classdef EBCamera < handle
             % start object
             if this.Adapter~="virtual"
                 start(this.viobj);  % about 220 ms
+            else
+                pause(0.2);
             end
             
             % set the camera beginning
@@ -876,6 +880,8 @@ classdef EBCamera < handle
 
             if this.Adapter~="virtual"
                 stop(this.viobj);
+            else
+                pause(0.2);
             end
             
             this.start_t = 0;

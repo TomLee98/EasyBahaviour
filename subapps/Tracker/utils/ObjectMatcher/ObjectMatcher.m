@@ -113,13 +113,33 @@ classdef ObjectMatcher < handle
             % ||        a31   a33   a34     ||
             % ================================ %
             if ~isempty(CostMat)
-                [ids, cost] = Hungarian(CostMat);
-                for k = 1:numel(ids)
-                    % treat ids(==0) as new object
-                    if ids(k) == 0
-                        new = [new; keys_observed(k)]; %#ok<AGROW>
-                    else
+                % there must exist one-one pair solution
+                if size(CostMat,1) == size(CostMat, 2)
+                    [ids, cost] = Hungarian(CostMat);
+                    for k = 1:numel(ids)
                         matched = [matched; [keys_predicted(ids(k)), keys_observed(k)]]; %#ok<AGROW>
+                    end
+                elseif size(CostMat, 1) > size(CostMat, 2)
+                    % observed more than predicted
+                    % there must be 'new' object(s)
+                    [ids, cost] = Hungarian(CostMat);
+                    for k = 1:numel(ids)
+                        % treat ids(==0) as new object
+                        if ids(k) == 0
+                            new = [new; keys_observed(k)]; %#ok<AGROW>
+                        else
+                            matched = [matched; [keys_predicted(ids(k)), keys_observed(k)]]; %#ok<AGROW>
+                        end
+                    end
+                else
+                    % predicted more than observed
+                    % there must be 'lost' object(s)
+                    [ids, cost] = Hungarian(CostMat);
+                    for k = 1:numel(ids)
+                        matched = [matched; [keys_predicted(ids(k)), keys_observed(k)]]; %#ok<AGROW>
+                    end
+                    for lsk = setdiff(1:size(CostMat,2), ids)
+                        lost = [lost; keys_predicted(lsk)]; %#ok<AGROW>
                     end
                 end
             else

@@ -10,13 +10,14 @@ classdef BayesianMotionClassifier < handle
     properties(Access = private)
         mmodel
         scale
+        boundary
         pidx
         lambda
         posterior
     end
     
     methods
-        function this = BayesianMotionClassifier(mdl, scale, target, lambda)
+        function this = BayesianMotionClassifier(mdl, scale, boundary, target, lambda)
             %BAYESIANESTIMATOR A Constructor
             % Input:
             %   - mdl: 1-by-1 motion model
@@ -25,12 +26,14 @@ classdef BayesianMotionClassifier < handle
                 mdl     (1,1)   MotionModel = MotionModel("Brownian-Gaussian")
                 scale   (1,1)   struct  = struct("xRes", 0.1, ...
                                                  "yRes", 0.1);
+                boundary(2,2)   double  {mustBePositive} = [1, 2048; 1, 1088]
                 target  (1,:)   double  {mustBePositive, mustBeInteger} = 3
                 lambda  (1,1)   double  {mustBeInRange(lambda, 0, 1)} = 0.88
             end
 
             this.mmodel = mdl;
             this.scale = [scale.xRes; scale.yRes; scale.xRes; scale.yRes];
+            this.boundary = boundary;
             this.pidx = target;
             this.lambda = lambda;
 
@@ -80,6 +83,16 @@ classdef BayesianMotionClassifier < handle
                 bbox_prev = observed_prev{matched.predicted(m)}(1:this.LOCFEATURES_N);
                 bbox_prev(1) = bbox_prev(1)+bbox_prev(3)/2; bbox_prev(2) = bbox_prev(2)+bbox_prev(4)/2;
                 bbox_cur = observed{matched.observed(m)}{1}';
+
+                % omit the invalid bbox, set posterior as 0
+                if ~this.isValidBBox(bbox_cur)
+                    this.posterior(matched.predicted(m)) = 0;
+                    boxes{matched.predicted(m)} = [observed{matched.observed(m)}{1}, ...
+                        this.posterior(matched.predicted(m))];
+                    continue; 
+                end
+
+                % transform to [center_x, center_y, width, height]
                 bbox_cur(1) = bbox_cur(1)+bbox_cur(3)/2; bbox_cur(2) = bbox_cur(2)+bbox_cur(4)/2;
 
                 v = (bbox_cur - bbox_prev).*this.scale./dt;
@@ -133,6 +146,13 @@ classdef BayesianMotionClassifier < handle
                 observed_tot{lost.predicted(p)} = ...
                     [predicted{lost.predicted(p)}; v];
 
+                if ~this.isValidBBox(predicted{lost.predicted(p)})
+                    this.posterior(lost.predicted(p)) = 0;
+                    boxes{lost.predicted(p)} = [predicted{lost.predicted(p)}', ...
+                        this.posterior(lost.predicted(p))];
+                    continue;
+                end
+
                 % update posterior probability
                 % exponential decay
                 if this.posterior.isKey(lost.predicted(p))
@@ -166,6 +186,11 @@ classdef BayesianMotionClassifier < handle
                     throw(MException("BayesianMotionClassifier:invalidModel", ...
                         "Unsupported motion model."));
             end
+        end
+
+        function TF = isValidBBox(this, bbox)
+            TF = (bbox(1) >=this.boundary(1,1) && bbox(1)+bbox(3)-1<=this.boundary(1,2)) ...
+                && (bbox(2) >=this.boundary(2,1) && bbox(2)+bbox(4)-1<= this.boundary(2,2));
         end
     end
 
