@@ -37,6 +37,8 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add 'Boxes View' on VideoPlayer
   |     |- [Update] Add Scale and Scale Bar
   |     |- [Update] Add 'Traces' on VideoPlayer
+  |     |- [Update] TODO: Optimize detector on real data
+  |     |- [Update] TODO: Add 'Stop' for requirement 
   |     |- [Update] TODO: optimize capturing and computing running scheduling
   |     |- [Update] TODO: Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
@@ -45,6 +47,7 @@ V1          Archimedes        阿基米德
   |     |- [Note]: parallel computing will suspund 'timer' running (include tic/toc)
   |- V1.4       2025/
   |     |- [Update] TODO: Advanced Preference Options support
+  |     |- [Update] TODO: Add Detection ROI
   |     |- [Update] TODO: VideoPlayer full support
   |     |- [Update] TODO: Add parallel rendering for exporting video
   |     |- [Update] TODO: ScaleBar support

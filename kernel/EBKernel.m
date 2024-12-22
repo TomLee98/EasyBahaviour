@@ -346,7 +346,7 @@ classdef EBKernel < handle
                         end
                     end
                     
-                    pause(0.1);
+                    pause(0.2); % wait for video player (parallel pool blocks other callback)
                 else
                     boxes = Tracker.noneTrack();
                     traces = PopulationAnalyzer.noneTrace();

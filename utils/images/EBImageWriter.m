@@ -152,7 +152,7 @@ classdef EBImageWriter < handle
        end
 
        function saveAsMAT(this, file)
-
+           
        end
    end
 end

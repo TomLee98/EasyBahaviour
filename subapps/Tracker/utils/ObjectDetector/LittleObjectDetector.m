@@ -6,7 +6,7 @@ classdef LittleObjectDetector < handle
 
     properties(Constant, Hidden)
         EXTEND_RATIO = 1.25
-        MINIMAL_OBJECT_PIXNUM = 10
+        MINIMAL_OBJECT_PIXNUM = 20
     end
 
     properties(Access = public, Dependent)
@@ -30,10 +30,9 @@ classdef LittleObjectDetector < handle
             arguments
                 file_classifier_    (1,1)   string =  ""
                 alg                 (1,1)   string  {mustBeMember(alg,["svm", "yolov4", "unet"])} = "svm"
-                option_             (1,1)   struct = struct("nprange",      [600, 200], ... % number of pixels distribution(normal), [mu, sigma]
+                option_             (1,1)   struct = struct("nprange",      [120, 30], ...  % number of pixels distribution(normal), [mu, sigma]
                                                             "robustness",   0.99, ...       % adaptive sensitivity for foreground objects detection
-                                                            "nobjmax",      13, ...         % number of objects estimated
-                                                            "binning",      2)              % binning pixels on each direction
+                                                            "nobjmax",      13)             % number of objects estimated)
             end
 
             this.algorithm = alg;
@@ -241,15 +240,13 @@ classdef LittleObjectDetector < handle
             %   - bboxes: k-by-4 double matrix, k for objects number, [x, y, w, h]
 
             %% Get Coarse Bounding Box
-            % Binning images for fast detection objects
-            img = imresize(image, 1/this.prop_opts.binning, "bilinear");
 
             % remove artifact in white field
-            DoS = 2*std2(imresize(img, [32,32], "box"))^2;
-            img = imbilatfilt(img, DoS);
+            DoS = 2*std2(imresize(image, [32,32], "box"))^2;
+            image = imbilatfilt(image, DoS);
 
             % use adaptive threshold for foreground detection
-            img_bw = imbinarize(img, "adaptive", "Sensitivity", 1-this.prop_opts.robustness);
+            img_bw = imbinarize(image, "adaptive", "Sensitivity", 1-this.prop_opts.robustness);
 
             % imclose for covered foreground estimation
             img_bw = imclose(img_bw, strel("diamond", 2));
@@ -261,11 +258,7 @@ classdef LittleObjectDetector < handle
             img_bw = bwareaopen(img_bw, this.MINIMAL_OBJECT_PIXNUM, 4);
             
             % Measure regions bounding boxes
-            bboxes = regionprops("table", img_bw, "BoundingBox");
-
-            % Extend boxes on raw image
-            bboxes.BoundingBox = this.prop_opts.binning * bboxes.BoundingBox;
-            bboxes = bboxes.BoundingBox;    % table -> matrix
+            bboxes = regionprops("table", img_bw, "BoundingBox").BoundingBox;
 
             %% Filter boxes by size
             boxsz = bboxes(:,3).*bboxes(:,4);

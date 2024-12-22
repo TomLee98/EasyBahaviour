@@ -13,7 +13,7 @@ classdef EBCamera < handle
         start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
         start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time
         storage     (1,1)   string                              % 1-by-1 string, indicate image buffer location
-        viobj       (:,1)                                = []   % 1-by-1 videoinput object
+        viobj       (:,1)                                = []   % 1-by-1 videoinput object or VideoReader
         vsobj       (:,1)                                = []   % 1-by-1 videosource object
     end
 
@@ -87,7 +87,7 @@ classdef EBCamera < handle
             this.cap_agent = timer("Name",          "EBCamera_Agent", ...
                                    "BusyMode",      "drop", ...         % drop frame 
                                    "ExecutionMode", "fixedRate", ...
-                                   "Period",        0.2,  ...             modified
+                                   "Period",        0.5,  ...           modified
                                    "TasksToExecute",inf, ...            modified
                                    "StartDelay",    0.25, ...
                                    "StartFcn",      @this.capture_begin, ...
@@ -565,7 +565,7 @@ classdef EBCamera < handle
             if this.IsConnected
                 switch this.Adapter
                     case "virtual"
-                        img = this.viobj.readimage(1);
+                        img = read(this.viobj, 1);
                         value = size(img, 2);
                     otherwise
                         rpos = this.viobj.ROIPosition;
@@ -596,7 +596,7 @@ classdef EBCamera < handle
             if this.IsConnected
                 switch this.Adapter
                     case "virtual"
-                        img = this.viobj.readimage(1);
+                        img = read(this.viobj, 1);
                         value = size(img, 1);
                     otherwise
                         rpos = this.viobj.ROIPosition;
@@ -671,10 +671,9 @@ classdef EBCamera < handle
                 try
                     switch this.Adapter
                         case "virtual"
-                            % let viobj as imageDataStore which links to
-                            % an image folder
-                            this.viobj = imageDatastore("scripts\RawSet\data1\", ...
-                                "FileExtensions",".png");
+                            % let viobj as VideoReader object, link to an
+                            % exist video file (local or remote)
+                            this.viobj = VideoReader("E:\si lab\Work\others\behaviour video\20241219_test.avi");
                         otherwise
                             % get object (link to old profile)
                             this.viobj = videoinput(this.Adapter, ...
@@ -839,9 +838,12 @@ classdef EBCamera < handle
             
             switch this.Adapter
                 case "virtual"
-                    filename = fullfile(string(this.viobj.Folders), ...
-                        sprintf("%d.png", this.ImagesBuffer.Size+1));
-                    img = imread(filename, "png");
+                    % read one frame if there exist
+                    if hasFrame(this.viobj)
+                        img = rgb2gray(readFrame(this.viobj));
+                    else
+                        img = [];   % bad case, avoid this
+                    end
                     pause(0.02);
                 otherwise
                     trigger(this.viobj);        % here is DAQ start time
