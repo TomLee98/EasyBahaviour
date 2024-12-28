@@ -1,23 +1,16 @@
 classdef Tracker < handle
     %TRACKER This class implements a tracker, which could track little 
     % moving objects in a complex scene
-
-    properties(Constant, Hidden)
-        AVERAGE_TARGET_RECALL = 0.8
-        MODE = "_DEBUG_"
-        % MODE = "_RELEASE_"
-    end
     
     properties(Access = private)
-        hBMC        (1,1)   BayesianMotionClassifier    % BayesianMotionClassifier object handle
-        hLOD        (1,1)   LittleObjectDetector        % LittleObjectDetector object handle
-        hMP         (1,1)   MotionPredictor             % MotionPredictor object handle
-        hOM         (1,1)   ObjectMatcher               % ObjectMatcher object handle
-        keys_lost   (1,1)   dictionary                  % string -> double, indicate lost keys continue number
-        keys_stay   (1,1)   dictionary                  % mark the keep stayed objects identity -> target posterior
-        obj_prev    (1,1)   dictionary                  % previous observed objects
-        opts        (1,1)   struct                      % Track object options struct
-        time_prev   (1,1)   double                      % previous time stamps, for calculating v, unit as seconds
+        hBMC            (1,1)   BayesianMotionClassifier    % BayesianMotionClassifier object handle
+        hLOD            (1,1)   LittleObjectDetector        % LittleObjectDetector object handle
+        hMP             (1,1)   MotionPredictor             % MotionPredictor object handle
+        hOM             (1,1)   ObjectMatcher               % ObjectMatcher object handle
+        obj_obliv       (1,1)   dictionary                  % string -> double, indicate lost keys continue number
+        obj_prev        (1,1)   dictionary                  % previous observed objects
+        opts            (1,1)   struct                      % Track object options struct
+        time_prev       (1,1)   double                      % previous time stamps, for calculating v, unit as seconds
     end
 
     properties(Access = private, Hidden)
@@ -29,31 +22,32 @@ classdef Tracker < handle
             arguments
                 options_    (1,1)   struct  = struct("lodopts", struct("classifier", "E:\si lab\Matlab Projects\EasyBehaviour\subapps\Tracker\utils\ObjectDetector\SVM\classifier_svm.bin", ...
                                                                        "alg",        "svm", ...
-                                                                       "options",    struct("nprange",      [120, 30], ...
+                                                                       "options",    struct("npobj",        [120, 30], ...
                                                                                             "robustness",   0.99, ...
-                                                                                            "nobjmax",      13)), ...
-                                                     "mpopts",  struct("KFEnable", false, ...
-                                                                       "KFWin",    9), ...
-                                                     "omopts",  struct("cost", "Jaccard", ...
-                                                                       "dist", "Euclidean"), ...
-                                                     "tkopts",  struct("target",   "larva", ...
-                                                                       "mmdl",  MotionModel("Brownian-Gaussian"), ...
-                                                                       "pth",   0.5, ...
-                                                                       "memlen", 10, ...
-                                                                       "xRes", 0.1, ... % mm/pixel
-                                                                       "yRes", 0.1, ...
-                                                                       "xLim", [1, 2048], ...
-                                                                       "yLim", [1, 1088]));
+                                                                                            "nobjmax",      30, ...
+                                                                                            "object",       "larva")), ...
+                                                     "mpopts",  struct("KFEnable",  false, ...
+                                                                       "KFWin",     9), ...
+                                                     "omopts",  struct("cost",      "Jaccard", ...
+                                                                       "dist",      "Euclidean"), ...
+                                                     "tkopts",  struct("mmdl",      MotionModel("Brownian-Gaussian"), ...
+                                                                       "lambda",    0.88, ...
+                                                                       "trcap",     8, ...
+                                                                       "xRes",      0.1, ... % mm/pixel
+                                                                       "yRes",      0.1, ...
+                                                                       "xLim",      [1, 2048], ...
+                                                                       "yLim",      [1, 1088], ...
+                                                                       "bxLim",     [15, inf]));
             end
 
             % initialize variables
             this.obj_prev = configureDictionary("string", "cell");
-            this.keys_lost = configureDictionary("string", "double");
-            this.keys_stay = configureDictionary("string", "double");
+            this.obj_obliv = configureDictionary("string", "double");
             this.time_prev = 0;
 
             % initialize components handle
-            refreshComponents(this, options_);
+            this.opts = options_;
+            this.refreshComponents();
         end
 
         function delete(this)
@@ -73,12 +67,12 @@ classdef Tracker < handle
             pause(0.4);
         end
 
-        function boxes = track(this, frame)
+        function [boxes, bwimg] = track(this, frame)
             % This function implements "SORT" algorithm for object tracking
             % Input:
             %   - frame: 1-by-2 cell array, with {image, time}
             % Output:
-            %   - boxes: 1-by-1 dictionary, identity(string) -> locatedprob(1-by-5 double, [x,y,w,h,p])
+            %   - boxes: 1-by-1 dictionary, identity(string) -> locatedprob(1-by-5 double, [x,y,w,h, pp,pf,v])
             arguments
                 this
                 frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
@@ -126,40 +120,24 @@ classdef Tracker < handle
                                                           id_lost, ...
                                                           diff(duration_sec));
 
-            %% Remove 'Targets' with Posterior Lower than Threshold
-            boxkeys = boxes.keys("uniform")';
-            switch this.MODE
-                case "_DEBUG_"
-                    for key = boxkeys
-                        % append v for debugging
-                        vvec = this.obj_prev{key}(BayesianMotionClassifier.LOCFEATURES_N+1:end);
-                        boxes{key} = [boxes{key}, sqrt(sum(vvec.^2))];
-                    end
-                otherwise
-                    for key = boxkeys
-                        % remove objects in boxes
-                        if boxes{key}(end) < this.opts.tkopts.pth
-                            boxes(key) = [];
-                            % this.obj_prev(key) = [];    %! keep obj_prev to avoid erase-flush
-                        end
-                    end
+            %% Modify Boxes as [x,y,w,h, pp,pf,v]
+            for key = boxes.keys("uniform")'
+                % append v for debugging
+                vvec = this.obj_prev{key}(BayesianMotionClassifier.LOCFEATURES_N+1:end);
+                boxes{key} = [boxes{key}, sqrt(sum(vvec.^2))];
             end
+
+            bwimg = this.hLOD.BWImage;
 
             % 
             this.time_prev = t_cur;
         end
 
-        function status = refreshComponents(this, options)
-            arguments
-                this
-                options     (1,1)   struct
-            end
-
-            this.opts = options;
-
+        function status = refreshComponents(this)
             try
+                this.opts.lodopts.options.nprange = this.opts.tkopts.bxLim;
                 this.hLOD = LittleObjectDetector(this.opts.lodopts.classifier, ...
-                    this.opts.lodopts.alg);
+                    this.opts.lodopts.alg, this.opts.lodopts.options);
                 this.hMP = MotionPredictor(this.opts.mpopts.KFWin, ...
                     this.opts.mpopts.KFEnable);
                 this.hOM = ObjectMatcher(this.opts.omopts.cost, ...
@@ -169,12 +147,14 @@ classdef Tracker < handle
                 scale = struct("xRes", this.opts.tkopts.xRes, ...
                                "yRes", this.opts.tkopts.yRes);
                 bound = [this.opts.tkopts.xLim; ...
-                         this.opts.tkopts.yLim];
-                lambda = this.opts.tkopts.pth^(1/(this.opts.tkopts.memlen+1));
+                         this.opts.tkopts.yLim; ...
+                         this.opts.tkopts.bxLim];
+                lambda = this.opts.tkopts.lambda;
+                trcap = this.opts.tkopts.trcap;
 
                 if this.hLOD.Loaded
-                    target = find(this.hLOD.LabelsOrder==this.opts.tkopts.target);
-                    this.hBMC = BayesianMotionClassifier(mdl, scale, bound, target, lambda);
+                    obj_idx = find(this.hLOD.LabelsOrder==this.opts.lodopts.options.object);
+                    this.hBMC = BayesianMotionClassifier(mdl, scale, bound, obj_idx, lambda, trcap);
                     status = 0;
                 else
                     status = -1;

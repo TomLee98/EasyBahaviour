@@ -8,7 +8,7 @@ classdef EBCamera < handle
         cap_agent   (1,1)   timer                               % 1-by-1 timer object
         devide_id   (1,1)   double                              % 1-by-1 double, positive integer
         duration    (1,1)   double                              % 1-by-1 double, indicate total acquire time
-        fr_target   (1,1)   double      {mustBePositive} = 2.5    % 1-by-1 target frame rate, Hz
+        fr_target   (1,1)   double      {mustBePositive} = 5    % 1-by-1 target frame rate, Hz
         iformat     (1,1)   string                              % 1-by-1 string, video format as "Mono8", "Mono12", etc
         start_t     (1,1)   uint64                              % 1-by-1 absolute acquire time, given by tic
         start_d     (1,1)   datetime                            % 1-by-1 datetime object, record absolute time

@@ -20,6 +20,7 @@ classdef EBKernel < handle
         LeftTime            % ___/get, 1-by-1 double, left time before stop recording, seconds
         NFramesProcessed    % ___/get, 1-by-1 processed frames with features
         Option              % set/get, 1-by-1 EBKernelOption, the options for running feature
+        ParadigmFeatures    % ___/get, 1-by-k table as metadata for offline analyzer "MAGAT"(Marc, et al., N.M, 2012.)
         Status              % ___/get, 1-by-3 EBStatus array, with [DeviceStatus, KernelStatus, TaskStatus]
         Tasks               % ___/get, n-by-2 table, with 
         TotalTime           % ___/get, 1-by-1 double, total experiment time, seconds
@@ -192,6 +193,49 @@ classdef EBKernel < handle
                         "Running kernel option is unsetable"));
             else
                 this.options = value;
+            end
+        end
+
+        %% ParadigmFeatures Getter
+        function value = get.ParadigmFeatures(this)
+            if this.Status(3) == EBStatus.TASK_DONE
+                BinX = this.devices{"camera"}.BinningHorizontal;
+                BinY = this.devices{"camera"}.BinningVertical;
+                if BinX ~= BinY
+                    warning("EBKernel:notSquaredPixel", "Binning pixel is not squared, " + ...
+                        "modified as maximum binning.");
+                    BinX = max(BinX, BinY);
+                end
+                Mightex_Bin = BinX;
+                Mightex_CameraID = this.devices{"camera"}.DeviceID;
+                Mightex_Column = this.devices{"camera"}.ROIWidth;
+                Mightex_Row = this.devices{"camera"}.ROIHeight;
+                Mightex_ExposureTime = this.devices{"camera"}.ExposureTime/1000; % to ms
+                Mightex_FrameRate = this.devices{"camera"}.AcquireFrameRate;    % different from recording but useful
+                Mightex_XStart = this.devices{"camera"}.OffsetX;
+                Mightex_YStart = this.devices{"camera"}.OffsetY;
+                Mightex_ProcessFrameType = 0;       % NULL
+                Mightex_FilterAcceptForFile = 1;    % DEFAULT
+                Mightex_BlueGain = 1;               % DEFAULT
+                Mightex_RedGain = 1;                % DEFAULT
+                Mightex_TriggerOccurred = 0;        % NULL
+                Mightex_TriggerEventCount = 0;      % NULL
+                value = table(Mightex_Bin, Mightex_CameraID,...
+                    Mightex_Column, Mightex_Row, Mightex_ExposureTime, ...
+                    Mightex_FrameRate, Mightex_XStart, Mightex_YStart, ...
+                    Mightex_ProcessFrameType, Mightex_FilterAcceptForFile, ...
+                    Mightex_BlueGain, Mightex_RedGain, Mightex_TriggerOccurred, ...
+                    Mightex_TriggerEventCount);
+            else
+                % initialized empty table
+                value = table('Size', [0, 14], ...
+                    'VariableTypes',repmat({'double'},1,14), ...
+                    'VariableNames',{'Mightex_Bin', 'Mightex_CameraID',...
+                    'Mightex_Column', 'Mightex_Row', 'Mightex_ExposureTime', ...
+                    'Mightex_FrameRate', 'Mightex_XStart', 'Mightex_YStart', ...
+                    'Mightex_ProcessFrameType', 'Mightex_FilterAcceptForFile', ...
+                    'Mightex_BlueGain', 'Mightex_RedGain', 'Mightex_TriggerOccurred', ...
+                    'Mightex_TriggerEventCount'});
             end
         end
 

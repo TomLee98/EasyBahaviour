@@ -8,16 +8,18 @@ classdef BayesianMotionClassifier < handle
     end
     
     properties(Access = private)
-        mmodel
-        scale
-        boundary
-        pidx
-        lambda
-        posterior
+        boundary        % 3-by-2 double, [xmin,xmax; ymin,ymax; bxmin,bxmax]
+        lambda          % 1-by-1 double, memory weight on history
+        mmodel          % 1-by-1 MotionModel, which split moving objects and shake/hold objects 
+        obj_type        % 1-by-1 positive integer, tracking objects type inner representation
+        obj_oblivion    % 1-by-1 dictionary, <string> -> <double>, indicate each invalid object continuous time
+        posterior       % 1-by-1 dictionary, <string> -> <double>, indicate each object (@obj_type) posterior probability
+        scale           % 4-by-1 double, [xr; yr; xr; yr]
+        trcap           % 1-by-1 positive integer, maximum continuous invalid objects traces capacity
     end
     
     methods
-        function this = BayesianMotionClassifier(mdl, scale, boundary, target, lambda)
+        function this = BayesianMotionClassifier(mdl, scale, boundary, object, lambda, trcap)
             %BAYESIANESTIMATOR A Constructor
             % Input:
             %   - mdl: 1-by-1 motion model
@@ -26,17 +28,20 @@ classdef BayesianMotionClassifier < handle
                 mdl     (1,1)   MotionModel = MotionModel("Brownian-Gaussian")
                 scale   (1,1)   struct  = struct("xRes", 0.1, ...
                                                  "yRes", 0.1);
-                boundary(2,2)   double  {mustBePositive} = [1, 2048; 1, 1088]
-                target  (1,:)   double  {mustBePositive, mustBeInteger} = 3
+                boundary(3,2)   double  {mustBePositive} = [1, 2048; 1, 1088; 15, 225]
+                object  (1,1)   double  {mustBePositive, mustBeInteger} = 2
                 lambda  (1,1)   double  {mustBeInRange(lambda, 0, 1)} = 0.88
+                trcap   (1,1)   double  {mustBePositive, mustBeInteger} = 8
             end
 
+            this.trcap = trcap;
             this.mmodel = mdl;
             this.scale = [scale.xRes; scale.yRes; scale.xRes; scale.yRes];
             this.boundary = boundary;
-            this.pidx = target;
+            this.obj_type = object;
             this.lambda = lambda;
 
+            this.obj_oblivion = configureDictionary("string", "double");
             this.posterior = configureDictionary("string", "double");
         end
 
@@ -45,12 +50,16 @@ classdef BayesianMotionClassifier < handle
     methods (Access = public)
         function [boxes, observed] = reEstimate(this, observed_prev, predicted, observed, matched, new, lost, dt)
             % This function re-estimates the objects posterior prabability
-            % and export modified observed as observed_previous for next
-            % estimation after Tracker calling
+            % and export modified observed_prev for next estimation after 
+            % Tracker calling
+            % (observed_prev, predicted, observed) --update-->
+            % (observed_prev) as new (observed)
             % Input:
-            %   - observed_prev: 1-by-1 dictionary, id(string) -> {[x,y,w,h,vx,vy,vw,vh]'}
+            %   - observed_prev: 1-by-1 dictionary, id(string) ->
+            %   {[x,y,w,h,vx,vy,vw,vh]'}, total observed tracks previously
             %   - predicted: 1-by-1 dictionary, id(string) -> {[x,y,w,h]'}
-            %   - observed: 1-by-1 dictionary, id(string) -> {{[x,y,w,h]}, {[p0,p1,...]}}
+            %   - observed: 1-by-1 dictionary, id(string) -> {{[x,y,w,h]},
+            %               {[p0,p1,...]}}, current observed tracks
             %   - matched: m-by-2 table, with {predicted, observed}, id
             %               mapping between predicted and observed
             %   - new: n-by-1 table, with {observed}
@@ -58,8 +67,10 @@ classdef BayesianMotionClassifier < handle
             %   - dt: 1-by-1 positive double, indicate time delay between
             %       observed_prev and observed
             % Output:
-            %   - boxes: 1-by-1 dictionary, id(string) -> {[x,y,w,h,p]}, p
-            %           for posterior probability between 0 and 1
+            %   - boxes: 1-by-1 dictionary, id(string) ->
+            %       {[x,y,w,h,pp,pf]}, pp for posterior probability between 
+            %       0 and 1, pf as predict indicator by MotionPredictor, 
+            %       true for a predicted box
             %   - observed: 1-by-1 dictionary, id(string) -> {[x,y,w,h,vx,vy,vw,vh]}
 
             arguments
@@ -73,24 +84,16 @@ classdef BayesianMotionClassifier < handle
                 dt              (1,1)   double      {mustBePositive}
             end
 
-            %% update velocity on each objects
+            % Update Observed History
             observed_tot = configureDictionary("string", "cell");   % id -> [x,y,w,h,vx,vy,vw,vh]
-            boxes = configureDictionary("string", "cell");
-            
-            % update matched objects
+            boxes = configureDictionary("string", "cell");  % id -> [x,y,w,h,pp,pf]
+
+            %% update matched objects (<==>updateAssignedTracks)
             for m = 1:numel(matched.predicted)
                 % update velocity
                 bbox_prev = observed_prev{matched.predicted(m)}(1:this.LOCFEATURES_N);
                 bbox_prev(1) = bbox_prev(1)+bbox_prev(3)/2; bbox_prev(2) = bbox_prev(2)+bbox_prev(4)/2;
                 bbox_cur = observed{matched.observed(m)}{1}';
-
-                % omit the invalid bbox, set posterior as 0
-                if ~this.isValidBBox(bbox_cur)
-                    this.posterior(matched.predicted(m)) = 0;
-                    boxes{matched.predicted(m)} = [observed{matched.observed(m)}{1}, ...
-                        this.posterior(matched.predicted(m))];
-                    continue; 
-                end
 
                 % transform to [center_x, center_y, width, height]
                 bbox_cur(1) = bbox_cur(1)+bbox_cur(3)/2; bbox_cur(2) = bbox_cur(2)+bbox_cur(4)/2;
@@ -102,7 +105,7 @@ classdef BayesianMotionClassifier < handle
 
                 % update posterior probability
                 rv = sqrt(sum(v.^2));
-                prior = observed{matched.observed(m)}{2}(this.pidx);
+                prior = observed{matched.observed(m)}{2}(this.obj_type);
 
                 if this.posterior.isKey(matched.predicted(m))
                     ptior = bem(this, rv, prior);
@@ -114,30 +117,43 @@ classdef BayesianMotionClassifier < handle
                 else
                     this.posterior(matched.predicted(m)) = prior;
                 end
-
-                boxes{matched.predicted(m)} = [observed{matched.observed(m)}{1}, ...
-                    this.posterior(matched.predicted(m))];
             end
 
-            % update new objects
+            %% update new objects (<==>updateUnassignedTracks)
+            new_objs = configureDictionary("string", "double");
+            new_keys = strings(numel(new.observed), 1);
+            obsvname_prev = observed_prev.keys("uniform");
             for n = 1:numel(new.observed)
                 % update velocity
                 % v as 0 for initializing
                 v = zeros(this.LOCFEATURES_N, 1);   
 
-                observed_tot{new.observed(n)} = ...
+                % regenerate new identities which will be added to
+                % tracks history: observed_tot
+                group = regexp(new.observed(n), "[a-zA-Z]*", "match");
+
+                if ~new_objs.isKey(group)
+                    new_objs(group) = 1;
+                else
+                    new_objs(group) = new_objs(group) + 1;
+                end
+
+                id_group = obsvname_prev(observed_prev.keys("uniform").contains(group));
+                nmax_group = max(str2double(id_group.extractAfter(group)));
+                n_next = nmax_group + new_objs(group);
+                id_next = sprintf("%s%d", group, n_next);
+                new_keys(n) = id_next;
+
+                observed_tot{id_next} = ...
                     [observed{new.observed(n)}{1}'; v];
 
                 % update posterior probability
                 % only prior as initial value
-                this.posterior(new.observed(n)) ...
-                    = observed{new.observed(n)}{2}(this.pidx);
-
-                boxes{new.observed(n)} = [observed{new.observed(n)}{1}, ...
-                    this.posterior(new.observed(n))];
+                this.posterior(id_next) ...
+                    = observed{new.observed(n)}{2}(this.obj_type);
             end
 
-            % update lost objects
+            %% update lost objects(<==>deleteLostTracks)
             for p = 1:numel(lost.predicted)
                 % update velocity
                 % keep v as previous observed
@@ -145,13 +161,6 @@ classdef BayesianMotionClassifier < handle
 
                 observed_tot{lost.predicted(p)} = ...
                     [predicted{lost.predicted(p)}; v];
-
-                if ~this.isValidBBox(predicted{lost.predicted(p)})
-                    this.posterior(lost.predicted(p)) = 0;
-                    boxes{lost.predicted(p)} = [predicted{lost.predicted(p)}', ...
-                        this.posterior(lost.predicted(p))];
-                    continue;
-                end
 
                 % update posterior probability
                 % exponential decay
@@ -161,11 +170,43 @@ classdef BayesianMotionClassifier < handle
                 else
                     this.posterior(lost.predicted(p)) = this.AVERAGE_TARGET_RECALL;
                 end
-
-                boxes{lost.predicted(p)} = [predicted{lost.predicted(p)}', ...
-                    this.posterior(lost.predicted(p))];
             end
 
+            %% update valid object (with box filter: isValidBBox)
+            invalid_objs = strings([]);
+            for key = observed_tot.keys("uniform")'
+                if this.isValidBBox(observed_tot{key}(1:this.LOCFEATURES_N))
+                    predict_flag = ...
+                        ~isempty(new_keys) && ismember(key, new_keys);
+
+                    boxes{key} = [observed_tot{key}(1:this.LOCFEATURES_N)', ...
+                            this.posterior(key), predict_flag];
+
+                    % clear oblivion marker
+                    if this.obj_oblivion.isKey(key)
+                        this.obj_oblivion(key) = [];
+                    end
+                else
+                    if this.obj_oblivion.isKey(key)
+                        this.obj_oblivion(key) = this.obj_oblivion(key) + 1;
+                        % mark invalid objects
+                        if this.obj_oblivion(key) > this.trcap
+                            invalid_objs = [invalid_objs, key]; %#ok<AGROW>
+                        end
+                    else
+                        % initialized object marker
+                        this.obj_oblivion(key) = 1;
+                    end
+                end
+            end
+
+            % remove object with invalid box over traces capacity
+            for key = invalid_objs
+                observed_tot(key) = [];
+                this.obj_oblivion(key) = [];
+            end
+
+            %
             observed = observed_tot;
         end
     end
@@ -189,8 +230,12 @@ classdef BayesianMotionClassifier < handle
         end
 
         function TF = isValidBBox(this, bbox)
+            bbox = floor(bbox);
             TF = (bbox(1) >=this.boundary(1,1) && bbox(1)+bbox(3)-1<=this.boundary(1,2)) ...
-                && (bbox(2) >=this.boundary(2,1) && bbox(2)+bbox(4)-1<= this.boundary(2,2));
+                && (bbox(2) >=this.boundary(2,1) && bbox(2)+bbox(4)-1<= this.boundary(2,2)) ... 
+                && (bbox(3) > 0) && (bbox(4) > 0) ...
+                && (bbox(3)*bbox(4) >= this.boundary(3,1)) ...
+                && (bbox(3)*bbox(4) <= this.boundary(3,2));
         end
     end
 

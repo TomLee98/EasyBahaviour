@@ -6,11 +6,11 @@ classdef LittleObjectDetector < handle
 
     properties(Constant, Hidden)
         EXTEND_RATIO = 1.25
-        MINIMAL_OBJECT_PIXNUM = 20
+        MINIMAL_OBJECT_PIXNUM = 15
     end
 
     properties(Access = public, Dependent)
-        Display         % set/get, 1-by-1 string, "on" or "off"
+        BWImage         % ___/get, m-by-n logical matrix indicates binarized scene image
         FeatureSize     % ___/get, 1-by-1 positive integer, the feature dimension
         LabelsOrder     % ___/get, 1-by-n string vector, consistant with posterior probability
         Loaded          % ___/get, 1-by-1 logical, indicate if classifier is loaded
@@ -20,8 +20,8 @@ classdef LittleObjectDetector < handle
         algorithm       % key technique branch
         classifier      % ClassificationECOC object, SVM multiclass model
         detector_opts   % struct with detector combined SVM options
+        bimg            % binarized final processed image
         prop_opts       % struct for preprocess options
-        view_flag       % flag for result view
     end
     
     methods
@@ -30,15 +30,16 @@ classdef LittleObjectDetector < handle
             arguments
                 file_classifier_    (1,1)   string =  ""
                 alg                 (1,1)   string  {mustBeMember(alg,["svm", "yolov4", "unet"])} = "svm"
-                option_             (1,1)   struct = struct("nprange",      [120, 30], ...  % number of pixels distribution(normal), [mu, sigma]
+                option_             (1,1)   struct = struct("npobj",        [120, 30], ...  % number of pixels distribution(normal) of object, [mu, sigma]
+                                                            "nprange",      [15, 225], ...  % number of pixels range of all detection
                                                             "robustness",   0.99, ...       % adaptive sensitivity for foreground objects detection
-                                                            "nobjmax",      13)             % number of objects estimated)
+                                                            "nobjmax",      30, ...         % number of objects estimated
+                                                            "object",       "larva")            
             end
 
             this.algorithm = alg;
 
             this.prop_opts = option_;
-            this.view_flag = false;
 
             if ~isequal(file_classifier_, "") && isfile(file_classifier_)
                 % load immediatelly
@@ -48,23 +49,9 @@ classdef LittleObjectDetector < handle
             end
         end
 
-        %% Display Getter & Setter
-        function value = get.Display(this)
-            if this.view_flag
-                value = "on";
-            else
-                value = "off";
-            end
-        end
-
-        function set.Display(this, value)
-            arguments
-                this
-                value   (1,1)   {mustBeMember(value, {"on", "off", 1, 0})} = "on"
-            end
-
-            this.view_flag = ...
-                (isequal(value, "on") || isequal(value, true));
+        %% BWImage Getter & Setter
+        function value = get.BWImage(this)
+            value = this.bimg;
         end
         
         %% FeatureDimension Getter
@@ -117,7 +104,7 @@ classdef LittleObjectDetector < handle
             features = this.getFeatures(image, bboxes);
 
             %% Use Features to Generate Identity
-            objects = this.makeIdentity(bboxes, features, image);
+            objects = this.makeIdentity(bboxes, features);
         end
 
         function load_classifier(this, file)
@@ -154,7 +141,7 @@ classdef LittleObjectDetector < handle
 
     methods (Access = private)
 
-        function objs = makeIdentity(this, bboxes, features, image)
+        function objs = makeIdentity(this, bboxes, features)
             % This function uses SVM for features detection, use Bayesian 
             % method to calculate the object identity posterior probability,
             % select objects with target labels
@@ -172,7 +159,7 @@ classdef LittleObjectDetector < handle
                     "Inner error caused, unmatched bounding boxes and features."));
             end
 
-            objs = dictionary();
+            objs = configureDictionary("string", "cell");
 
             % remove invalid features
             rmfidx = cellfun(@isempty, features, "UniformOutput",true);
@@ -183,25 +170,10 @@ classdef LittleObjectDetector < handle
             features = cell2mat(features);
             [ids, ~, ~, posterior] = predict(this.classifier, features);
 
-            nlabels = ones(1, numel(this.classifier.ClassNames));
+            % omit other labels, only object (&posterior)
             for k = 1:numel(ids)
-                [~, idpos] = ismember(ids{k}, this.classifier.ClassNames);
-                key = sprintf("%s%d", ids{k}, nlabels(idpos));
+                key = sprintf("%s%d", this.prop_opts.object, k);
                 objs{key} = {bboxes(k, :), posterior(k,:)};
-                nlabels(idpos) = nlabels(idpos) + 1;
-            end
-
-            if this.view_flag == true
-                figure; % new figure for debugging
-                imshow(image);
-                keys = objs.keys("uniform");
-                for k = 1:numel(ids)
-                    if isequal(ids{k}, "larva"), color = "g"; else, color = "r"; end
-                    rectangle("Position", bboxes(k,:), "EdgeColor",color,"LineWidth",1);
-                    text(bboxes(k,1)+bboxes(k,3)/2, bboxes(k,2)-3, keys(k), ...
-                        "Color",color, "FontSize",12, "HorizontalAlignment", "center", ...
-                        "VerticalAlignment", "bottom");
-                end
             end
         end
 
@@ -255,7 +227,8 @@ classdef LittleObjectDetector < handle
             img_bw = imclearborder(img_bw, 4);
 
             % remove too small objects by absolute pixels number
-            img_bw = bwareaopen(img_bw, this.MINIMAL_OBJECT_PIXNUM, 4);
+            img_bw = bwareaopen(img_bw, this.prop_opts.nprange(1), 4);
+            this.bimg = img_bw;
             
             % Measure regions bounding boxes
             bboxes = regionprops("table", img_bw, "BoundingBox").BoundingBox;
@@ -264,7 +237,7 @@ classdef LittleObjectDetector < handle
             boxsz = bboxes(:,3).*bboxes(:,4);
 
             % Mahalanobis distance for outlier removing
-            objs_cost = abs(boxsz - this.prop_opts.nprange(1))./this.prop_opts.nprange(2);
+            objs_cost = abs(boxsz - this.prop_opts.npobj(1))./this.prop_opts.npobj(2);
 
             % sort by min cost
             if size(bboxes, 1) > this.prop_opts.nobjmax
