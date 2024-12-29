@@ -3,6 +3,7 @@ classdef EBImageWriter < handle
     %defined format
     properties (Constant, Hidden)
         IMAGE_FORMAT_DEFAULT = "jpg"
+        IMAGE_SUFFIX = "AAAAA"
     end
 
     properties(SetAccess=immutable)
@@ -176,7 +177,8 @@ classdef EBImageWriter < handle
        function saveToFolder(this, folder)
            % save to folder as *.jpg format
            np = this.dataset.Size;
-           fmt = sprintf("%%0%dd.%s", ceil(log10(np-1)), this.IMAGE_FORMAT_DEFAULT);
+           fmt = sprintf("%s%%0%dd.%s", this.IMAGE_SUFFIX, ...
+               ceil(log10(np-1)), this.IMAGE_FORMAT_DEFAULT);
 
            for k = 1:np
                file = fullfile(folder, sprintf(fmt, k-1));
