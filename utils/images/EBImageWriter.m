@@ -1,6 +1,9 @@
 classdef EBImageWriter < handle
     %IMAGEWRITER This is image writer class, which support write files as
     %defined format
+    properties (Constant, Hidden)
+        IMAGE_FORMAT_DEFAULT = "jpg"
+    end
 
     properties(SetAccess=immutable)
         dataset
@@ -37,36 +40,50 @@ classdef EBImageWriter < handle
    end
 
    methods (Access = public)
-       function write(this)
+       function write(this, fmt)
+           arguments
+               this
+               fmt  (1,1)   string  {mustBeMember(fmt, ["IMAGE", "IMAGE_STACK"])} = "IMAGE_STACK"
+           end
+
            if this.dataset.IsEmpty
                warning("EBImageWriter:noImagestoWrite", ...
                    "No images could be written.");
                return;
            end
 
-           [file, path] = uiputfile({'*.tif', 'Tiff Files (*.tif)'; ...
-               '*.hdf5', 'HDF5 Files (*.tif)'; ...
-               '*.mat',  'MATLAB Files (*.mat)'}, ...
-               "保存图像", "captured.tif");
-           if ~isnumeric(file)
-               file = fullfile(path, file);
-               [~, ~, ext] = fileparts(file);
+           switch fmt
+               case "IMAGE"
+                   fdir = uigetdir(userpath, "选择文件夹");
+                   if ~isnumeric(fdir)
+                       this.saveToFolder(fdir);
+                   end
+               case "IMAGE_STACK"
+                   [file, path] = uiputfile({'*.tif', 'Tiff Files (*.tif)'; ...
+                       '*.hdf5', 'HDF5 Files (*.tif)'; ...
+                       '*.mat',  'MATLAB Files (*.mat)'}, ...
+                       "保存图像", "captured.tif");
+                   if ~isnumeric(file)
+                       file = fullfile(path, file);
+                       [~, ~, ext] = fileparts(file);
 
-               switch ext
-                   case ".tif"
-                       this.saveAsTIFF(file);
-                   case ".hdf5"
-                       this.saveAsHDF5(file);
-                   case ".mat"
-                       this.saveAsMAT(file);
-                   otherwise
-               end
-
+                       switch ext
+                           case ".tif"
+                               this.saveAsTIFF(file);
+                           case ".hdf5"
+                               this.saveAsHDF5(file);
+                           case ".mat"
+                               this.saveAsMAT(file);
+                           otherwise
+                       end
+                   end
+               otherwise
            end
        end
    end
 
    methods (Access = private)
+       %% IMAGE_STACK FILE FORMAT IMPLEMENT
        function saveAsTIFF(this, file)
            % call Tiff library built in MATLAB
            % save no compressed raw data
@@ -153,6 +170,21 @@ classdef EBImageWriter < handle
 
        function saveAsMAT(this, file)
            
+       end
+
+       %% IMAGE FILE FORMAT IMPLEMENT
+       function saveToFolder(this, folder)
+           % save to folder as *.jpg format
+           np = this.dataset.Size;
+           fmt = sprintf("%%0%dd.%s", ceil(log10(np-1)), this.IMAGE_FORMAT_DEFAULT);
+
+           for k = 1:np
+               file = fullfile(folder, sprintf(fmt, k-1));
+               [img, ~] = this.dataset.GetFrame(k);
+               imwrite(img, file, this.IMAGE_FORMAT_DEFAULT, "Quality",100, ...
+                   "Comment","EBImage");
+               this.prgs = k/np;
+           end
        end
    end
 end
