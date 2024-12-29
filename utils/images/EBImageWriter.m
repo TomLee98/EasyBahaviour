@@ -183,8 +183,9 @@ classdef EBImageWriter < handle
            for k = 1:np
                file = fullfile(folder, sprintf(fmt, k-1));
                [img, ~] = this.dataset.GetFrame(k);
+               img = uint8(double(img)/4095*255);
                imwrite(img, file, this.IMAGE_FORMAT_DEFAULT, "Quality",100, ...
-                   "Comment","EBImage");
+                   "Comment","EBImage", "BitDepth",8);
                this.prgs = k/np;
            end
        end

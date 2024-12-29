@@ -56,7 +56,7 @@ classdef Tracker < handle
     end
 
     methods(Access = public)
-        function boxes = track_(this, frame)
+        function boxes = track(this, frame)
             arguments
                 this
                 frame   (1, 2)  cell    % {image:m-by-n matrix, time:1-by-1 scalar}
@@ -67,7 +67,7 @@ classdef Tracker < handle
             pause(0.4);
         end
 
-        function [boxes, bwimg] = track(this, frame)
+        function [boxes, bwimg] = track_(this, frame)
             % This function implements "SORT" algorithm for object tracking
             % Input:
             %   - frame: 1-by-2 cell array, with {image, time}
