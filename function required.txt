@@ -39,28 +39,28 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add 'Traces' on VideoPlayer
   |     |- [Update] Add 'Tracker' and Tracking panel (SORT Algorithm with Bayesian Corrector)
   |     |- [Update] Optimize detector parameters on real data
-  |     |- [Update] TODO: Introduce unsymmetrical weights on "Bayesian Classifier"
+  |     |- [Update] Add output metadata for MAGAT (offline analyzer by: Marc, et al., N.M, 2012.)
   |     |- [Update] TODO: Add 'Stop' for requirement
-  |     |- [Update] TODO: Add 'Export Behaviour Parameters'
-  |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
   |     |- [Note]: lock the capture frame rate to 10 FPS because "hard drive" mode is not fast
   |     |- [Note]: parallel computing will suspund 'timer' running (include tic/toc)
   |- V1.4       2025/
-  |     |- [Update] TODO: optimize capturing and computing running scheduling
+  |     |- [Update] TODO: Introduce unsymmetrical weights on "Bayesian Classifier"
+  |     |- [Update] TODO: Optimize capturing and computing running scheduling
   |     |- [Update] TODO: Advanced Preference Options support
   |     |- [Update] TODO: Add Detection ROI
   |     |- [Update] TODO: VideoPlayer full support
-  |     |- [Update] TODO: Add parallel rendering for exporting video
+  |     |- [Update] TODO: Add 'Export Behaviour Parameters'
   |     |- [Update] TODO: ScaleBar support
   |     |- [Update] TODO: Add 'double Kalman Filter' for better motion prediction
-  |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: long-time recording faster for numeric array by memmapfile
-  |     |- [Update] TODO: Add Beightness/Contrast
   |     |- [Update] TODO: Add .hdf5, .mat file export support
-  |     |- [Fix Bugs]
+  |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
   |- V1.5       2025/
+  |     |- [Update] TODO: Add 'Parameterization'
+  |     |- [Update] TODO: Add Beightness/Contrast
   |     |- [Update] TODO: Add manual trigger
   |     |- [Update] TODO: Add palette function
+  |     |- [Update] TODO: Add parallel rendering for exporting video
   |     |- [Fix Bugs]
   |- V1.6       2025/
   |     |- [Update] TODOl full function video player support
