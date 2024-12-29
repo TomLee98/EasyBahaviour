@@ -103,7 +103,7 @@ properties (Access=private, Hidden)
             function free(x)
                 if isobject(x) && isvalid(x) && ...
                         ismember("delete", string(methods(x)))
-                    x.delete();     % call 'delete'
+                    x.delete();     % call overloaded 'delete'
                 end
             end
         end
