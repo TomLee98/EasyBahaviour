@@ -42,46 +42,17 @@ V1          Archimedes        阿基米德
   |     |- [Update] Add output metadata for MAGAT (offline analyzer by: Marc, et al., N.M, 2012.)
   |     |- [Note]: lock the capture frame rate to 10 FPS because "hard drive" mode is not fast
   |     |- [Note]: parallel computing will suspund 'timer' running (include tic/toc)
-  |- V1.3       2025/
+  |- V1.3       2025/05/06
   |     |- [Update] TODO: Add 'Stop' for requirement
   |     |- [Update] TODO: long-time recording faster for numeric array by memmapfile
-  |     |- [Update] TODO: Integrate Tracker inplement and setting
   |     |- [Update] TODO: Add 'Export Behaviour Parameters'
-  |     |- [Update] TODO: ScaleBar support
-  |     |- [Update] TODO: Advanced Preference Options support
   |     |- [Update] TODO: VideoPlayer full support
+  |     |- [Fix Bugs] TODO: Reduce program crashes
+  |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous
   |- V1.4       2025/
-  |     |- [Update] TODO: Introduce unsymmetrical weights on "Bayesian Classifier"
-  |     |- [Update] TODO: Optimize capturing and computing running scheduling
-  |     |- [Update] TODO: Add Detection ROI
-  |     |- [Update] TODO: Add 'double Kalman Filter' for better motion prediction
-  |     |- [Update] TODO: Add .hdf5, .mat file export support
-  |     |- [Fix Bugs] TODO: 'simple' mode with bad synchronous and possible "break down"
-  |- V1.5       2025/
-  |     |- [Update] TODO: Add 'Parameterization'
   |     |- [Update] TODO: Add Beightness/Contrast
-  |     |- [Update] TODO: Add manual trigger
-  |     |- [Update] TODO: Add palette function
   |     |- [Update] TODO: Add parallel rendering for exporting video
-  |     |- [Fix Bugs]
-  |- V1.6       2025/
-  |     |- [Update] TODOl full function video player support
-  |     |- [Fix Bugs]
-  #     #
-
-
-V2          Tesla           特斯拉
-  |
-  |- V2.0       2025/01/
-  |     |- [Update] TODO: Add 'paradigm designer & manager'
-  |     |- [Update] TODO: Add 'New Paradigm'
-  |     |- [Update] TODO: Add 'Document'
-  |     |- [Fix Bugs]
-  |- V2.1       2024/01/
+  |     |- [Update] TODO: Add .hdf5, .mat file export support
   |     |- [Update] TODO: Add 'Multi-Languages Document' support
-  |     |- [Update]
-  |     |- [Fix Bugs]
-
-
-========================== Technique Stack ===========================
-NOTE: parameterization
+  |     |- [Fix Bugs] TODO: 
+  #     #

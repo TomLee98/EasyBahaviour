@@ -87,9 +87,9 @@ classdef EBCamera < handle
             this.cap_agent = timer("Name",          "EBCamera_Agent", ...
                                    "BusyMode",      "drop", ...         % drop frame 
                                    "ExecutionMode", "fixedRate", ...
-                                   "Period",        0.5,  ...           modified
-                                   "TasksToExecute",inf, ...            modified
-                                   "StartDelay",    0.25, ...
+                                   "Period",        0.5,  ...           % modified
+                                   "TasksToExecute",inf, ...            % modified
+                                   "StartDelay",    0.25, ...           % accuracy tested
                                    "StartFcn",      @this.capture_begin, ...
                                    "StopFcn",       @this.capture_end, ...
                                    "TimerFcn",      @this.capture_one_frame);
@@ -846,8 +846,11 @@ classdef EBCamera < handle
                     end
                     pause(0.02);
                 otherwise
-                    trigger(this.viobj);        % here is DAQ start time
-                    img = getdata(this.viobj);
+                    try     % may cause acquired crash
+                        trigger(this.viobj);        % here is DAQ start time
+                        img = getdata(this.viobj);
+                    catch   % .
+                    end
             end
 
             % input to images buffer

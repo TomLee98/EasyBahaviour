@@ -396,13 +396,15 @@ classdef EBDAQ < handle
         function Test(this, command)
             % just write, pause, and write
             % do not use cmd_sender
+            try
+                if this.IsConnected
+                    % write command
+                    write(this.daqobj, command);
 
-            if this.IsConnected
-                % write command
-                write(this.daqobj, command);
-
-                % read for init inner stack
-                read(this.daqobj, OutputFormat="Matrix");
+                    % read for init inner stack
+                    read(this.daqobj, OutputFormat="Matrix");
+                end
+            catch   % .
             end
         end
 
@@ -475,7 +477,10 @@ classdef EBDAQ < handle
                     case "virtual"
                         fprintf("valves code: %s\n", string(cmd).join(" "));
                     otherwise
-                        write(this.daqobj, cmd);
+                        try
+                            write(this.daqobj, cmd);
+                        catch   % .
+                        end
                 end
             end
         end

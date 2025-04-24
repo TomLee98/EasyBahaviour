@@ -352,7 +352,7 @@ classdef EBKernel < handle
 
             %% Enable hardware process
 
-            % turn on DAQ device (first of all)
+            % turn on DAQ device
             this.devices{"daq_device"}.Run();   % waitfor camera switching
 
             % turn on camera and acquire right now
